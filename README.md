@@ -5,10 +5,15 @@ My name is Corina Racovita and I have master of finance and banking. I graduated
 On this site Noriel i would like to share my gained experience from personal studies and researches. 
 
 
+
 TOOLS
 
 Postman - Testing tool for REST API
+
 Jira- Issue tracking and project management tol for developers
+
 Github
+
 Snipping-Screen capture software
+
 MySQL

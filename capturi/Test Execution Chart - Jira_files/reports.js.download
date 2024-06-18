@@ -1,0 +1,233 @@
+var ZEPHYR = ZEPHYR || {};
+ZEPHYR.REPORTS = ZEPHYR.REPORTS || {};
+
+ZEPHYR.REPORTS.CONFIG = {
+	init : function(xdm_e, cp, zcp){
+		AP.getLocation(function(location){
+    		if(location.split('#!')[1] !== 'chart'){
+				AP.require(["history"], function(history){
+				   	history.pushState('config');
+				});
+			}
+    	});
+		var that = this;
+		ZEPHYR.TEST.ContextPath.setContextPaths(cp, zcp);
+    	ZEPHYR.TEST.BaseURL.setBaseURL(xdm_e);
+		AJS.$("#cycles-dd").auiSelect2();
+		AJS.$("#groupFld-dd").auiSelect2();
+		AJS.$("#defectsCount-dd").auiSelect2();
+		this.attachButtonEvents();
+		this.fetchVersions(AJS.$('#currentProject').data('projectkey'), this.loadChartsPage);
+		AP.require(["history"], function(history){
+			AP.getLocation(function(location){
+	    		if(location.split('#!')[1] !== 'chart'){
+					history.pushState('config');
+				}
+	    	});
+			history.popState(function(e){
+			    if(e.oldURL === 'config' && e.newURL === ''){
+			    	history.go(-1);
+			    }
+			    if(e.oldURL === 'chart' && e.newURL === 'config'){
+			    	history.go(0);
+			    }
+			    if(e.oldURL === 'config' && e.newURL === 'chart'){
+			    	that.loadChartsPage();
+			    }
+			});
+		});
+	},
+	loadChartsPage : function(){
+		AP.getLocation(function(location){
+    		if(location && location.split('#!')[1] === 'chart'){
+    			AJS.$('#config').addClass('hide');
+				AJS.$('#zephyr-test-report').removeClass('hide').addClass('show');
+    			AJS.$('#next').trigger('click', {'isChartRefreshed' : true});
+    		}
+    		else{
+    			AJS.$('#zephyr-test-report').addClass('hide');
+				AJS.$('#config').removeClass('hide').addClass('show');
+    		}
+    	});
+	},
+	fetchVersions : function(projectKey, loadChartsPage) {
+		var that = this;
+		AP.require('request', function(request){
+	        request({
+	            url: '/rest/api/2/project/' + projectKey + '/versions',
+	            success: function(versions) {
+	            	var versions = AJS.$.parseJSON(versions);
+	            	versions = ZEPHYR.TEST.Version.parseVersions(versions);
+	            	var versionsHTML = ZEPHYR.Templates.Reports.renderVersions({
+	            		versions: versions,
+	            		selectedVersionId: -1,
+	            		i18n: Messages.messages
+	            	});
+	            	AJS.$('#versions').html(versionsHTML);
+			    	that._attachVersionEvents();
+			    	loadChartsPage();
+	            }
+	        });
+	    });
+	},
+	_attachVersionEvents : function(){
+		AJS.$('#versions-dd').auiSelect2();
+		AJS.$('.select2-container').css({'width': '200px'});
+		// Onchange of version
+		AJS.$('#versions-dd').change(function(ev) {
+
+			if(!AJS.$('#cycles').length){
+				return;
+			}
+
+			var versionId = AJS.$(ev.target).val();
+			var projectId = AJS.$('#currentProject').data('projectid');
+			ZEPHYR.Loading.showLoadingIndicator();
+
+			AJS.$.ajax({
+	            url: ZEPHYR.TEST.ContextPath.getZContextPath()  + "public/rest/api/" + ZEPHYR.API.Version.getVersion() + "/cycles/search?versionId=" + versionId + '&projectId=' + projectId + "&expand=executionSummaries" + '&' + ZEPHYR.TEST.getCacheInterceptor(),
+	            type : "GET",
+	            success: function(cycles) {
+	            	var cyclesHTML = ZEPHYR.Templates.Reports.renderCycles({
+	            		cycles: cycles
+	            	});
+	            	AJS.$('#cycles').html(cyclesHTML);
+	            	AJS.$("#cycles-dd").auiSelect2();
+	  				ZEPHYR.Loading.hideLoadingIndicator();
+	  			},
+	  			error: function(response) {
+	  				ZEPHYR.Loading.hideLoadingIndicator();
+	  			}
+	        });
+		});
+	},
+	attachButtonEvents : function(){
+
+		var headerMessages = {
+			'execution' : Messages("je.gadget.testcase.execution.title"),
+			'burndown' : Messages("je.gadget.unexecuted.schedules.title"),
+			'defects' : Messages("je.gadget.top.defects.title")
+		},
+		summaryMessages = {
+			'execution' : Messages("je.gadget.testcase.execution.title"),
+			'burndown' : Messages("je.gadget.unexecuted.schedules.title"),
+			'defects' : Messages("je.gadget.top.defects.title")
+		},
+		reportType = AJS.$('#reportType').val(),
+		that = this;
+
+		AJS.$('#next').on('click', function(e, params){
+
+			var reportParameters;
+			if(params && params.isChartRefreshed){
+				reportParameters = JSON.parse(sessionStorage.reportParameters);
+			}
+			else{
+				reportParameters = {
+					'reportType' : reportType,
+					'projectId' : AJS.$('#currentProject').data('projectid'),
+					'versionId' : AJS.$('#versions-dd').val(),
+					'cycleId' : AJS.$('#cycles-dd').val(),
+					'folderId' : AJS.$('#folders-dd').val(),
+					'grpFld' : AJS.$('#groupFld-dd').val(),
+					'defectsCount' : AJS.$('#defectsCount-dd').val(),
+					'statuses' : "",
+					'projectName' : AJS.$('#currentProject').data('projectkey'),
+					'versionName' : AJS.$('#versions-dd').find('option:selected').text(),
+					'groupFieldName' : AJS.$('#groupFld-dd').find('option:selected').text(),
+					'cycleName' : AJS.$('#cycles-dd').find('option:selected').text(),
+					'folderName' : AJS.$('#folders-dd').find('option:selected').text()
+				};
+
+				var pickStatus = AJS.$('#pickStatus-dd').val(),
+					statuses = "";
+				if(pickStatus){
+					for(var i = 0; i < pickStatus.length; i++){
+		                statuses += pickStatus[i] + "|";
+		            }
+		            statuses = statuses.substring(0, statuses.length - 1);
+				}
+				reportParameters.statuses = statuses;
+
+				sessionStorage.reportParameters = JSON.stringify(reportParameters);
+
+			}
+
+			AJS.$('#config').addClass('hide');
+			AJS.$('#zephyr-test-report').removeClass('hide').addClass('show');
+			AJS.$('header').find('h1').html(headerMessages[reportType]);
+
+			AJS.$('summary').find('h2').html("<span><b>" + reportParameters.projectName + "</b></span>" + ' / ' + "<span><b>" +  AJS.escapeHtml(reportParameters.versionName) + "</b></span>");
+			AJS.$('summary').find('h2').find('span').css('color', '#3572b0');
+
+			var reportLabel;
+			if(reportType === 'execution'){
+				reportLabel = Messages("zephyr.reports.testcase.execution.project.title") + ' ' + reportParameters.groupFieldName;
+				AJS.$('summary').find('h2').css('padding-left', '3%');
+			}
+			else if(reportType === 'burndown'){
+				reportLabel = Messages("zephyr.reports.unexecuted.schedules.project.title", AJS.escapeHtml(reportParameters.cycleName));
+				AJS.$('summary').find('h2').css('padding-left', '10%');
+			}
+			else if(reportType === 'defects'){
+				reportLabel = Messages("zephyr.reports.top.defects.project.title", reportParameters.defectsCount);
+				AJS.$('summary').find('h2').css('padding-left', '6%');
+			}
+
+			AJS.$('summary').find('h3').html(reportLabel);
+
+			AJS.$('summary').css('padding-left', '36%');
+
+			AP.require(["history"], function(history){
+				history.pushState('chart');
+			});
+
+			that.renderChart(reportParameters.reportType, reportParameters.projectId, reportParameters.versionId, reportParameters.cycleId, reportParameters.folderId, reportParameters.grpFld, reportParameters.defectsCount, reportParameters.statuses);
+
+		});
+		AJS.$('#cancel').on('click', function(){
+
+			var element = document.getElementById('tempLink');
+
+        	//Trigger click event on Safari using createEvent
+        	if(document.createEvent) {
+                var evt = document.createEvent("MouseEvents");
+                evt.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+                element.dispatchEvent(evt);
+            }
+            else {
+                element.click();
+            }
+		});
+		AJS.$('#back').on('click', function(){
+
+			AJS.$('#config').removeClass('hide').addClass('show');
+			AJS.$('#zephyr-test-report').removeClass('show').addClass('hide');
+			AJS.$('summary').css('padding-left', '20%');
+			AJS.$('header').find('h1').html('Configure - ' + headerMessages[reportType]);
+			AJS.$('summary').find('h2').html('');
+			AJS.$('summary').find('h3').html('Report : ' + summaryMessages[reportType]);
+
+			AP.require(["history"], function(history){
+				history.pushState('config');
+			});
+
+		});
+	},
+	renderChart : function(reportType, projectId, versionId, cycleId, folderId, grpFld, defectsCount, pickStatus){
+
+		var report;
+		if (reportType === 'execution'){
+            report = new ZEPHYR.REPORTS.EXECUTION();
+            report.getExecutions(projectId, versionId, grpFld);
+        }
+        else if (reportType === 'burndown'){
+        	report = new ZEPHYR.REPORTS.BURNDOWN();
+			report.getBurndownExecutions(projectId, versionId, cycleId, folderId);
+        }
+        else if (reportType === 'defects'){
+            report = new ZEPHYR.REPORTS.TOPDEFECTS();
+            report.getDefects(projectId, versionId, defectsCount, pickStatus);
+        }
+	}
+}

@@ -1,0 +1,749 @@
+/**
+ * @namespace ZEPHYR.REPORTS.EXECUTION
+ */
+var ZEPHYR = ZEPHYR || {};
+var grpBy = '';
+ZEPHYR.REPORTS = ZEPHYR.REPORTS || {};
+
+ZEPHYR.REPORTS.ISGADGET = false;
+
+ZEPHYR.REPORTS.EXECUTION = function () {}
+ZEPHYR.REPORTS.EXECUTION.prototype = AJS.$.extend(ZEPHYR.REPORTS.EXECUTION.prototype, {
+    data: {},
+    resize: function () {
+        if(Object.keys(this.data).length) {
+            this.drawChart(this.data);
+        }
+    },
+    getExecutions: function (projectId, versionId, grpFld, isGadget, callback) {
+        if (isGadget) {
+            ZEPHYR.REPORTS.ISGADGET = true;
+        }
+        if(grpBy !== grpFld) {
+            analytics.track('Group by option - Reports', {
+                groupBy: grpFld
+            })
+            grpBy = grpFld;
+        }
+        var that = this;
+        var ajaxOptions = {
+            url: ZEPHYR.TEST.ContextPath.getZContextPath() + 'public/rest/api/' + ZEPHYR.API.Version.getVersion() + '/executioncount?projectId=' + projectId + '&versionId=' + versionId + '&groupFld=' + grpFld,
+            type: 'GET',
+            contentType: 'application/json',
+            success: function (data) {
+                // var data = {
+                //     'urlBase': 'TBD',
+                //     'groupFld': 'cycle',
+                //     'statusSeries': {
+                //         '-1': {
+                //             'id': -1,
+                //             'desc': 'The test has not yet been executed.',
+                //             'color': '#A0A0A0',
+                //             'name': 'UNEXECUTED'
+                //         },
+                //         '1': {
+                //             'id': 1,
+                //             'desc': 'Test was executed and passed successfully.',
+                //             'color': '#75B000',
+                //             'name': 'PASS'
+                //         },
+                //         '2': {
+                //             'id': 2,
+                //             'desc': 'Test was executed and failed.',
+                //             'color': '#CC3300',
+                //             'name': 'FAIL'
+                //         },
+                //         '3': {
+                //             'id': 3,
+                //             'desc': 'Test execution is a work-in-progress.',
+                //             'color': '#F2B000',
+                //             'name': 'WIP'
+                //         },
+                //         '4': {
+                //             'id': 4,
+                //             'desc': 'The test execution of this test was blocked for some reason.',
+                //             'color': '#6693B0',
+                //             'name': 'BLOCKED'
+                //         }
+                //     },
+                //     'data': [{
+                //         'id': 27,
+                //         'cnt': {
+                //             '-1': 0,
+                //             '1': 0,
+                //             '2': 0,
+                //             '3': 0,
+                //             '4': 0,
+                //             'total': 0
+                //         },
+                //         'name': 'az'
+                //     }, {
+                //         'id': 28,
+                //         'cnt': {
+                //             '-1': 0,
+                //             '1': 1,
+                //             '2': 0,
+                //             '3': 2,
+                //             '4': 0,
+                //             'total': 3
+                //         },
+                //         'name': 'zxc'
+                //     }, {
+                //         'id': -1,
+                //         'cnt': {
+                //             '-1': 0,
+                //             '1': 1,
+                //             '2': 0,
+                //             '3': 0,
+                //             '4': 1,
+                //             'total': 2
+                //         },
+                //         'name': 'Ad hoc'
+                //     }]
+                // };
+                if (data) {
+                    if (Object.keys(data).length === 0) {
+                        AJS.$('#' + reqParams.chartDivId).html('No data found for chart ' + reqParams.title).css('color', '#1F77B4');
+                    } else {
+                        var schedules = {
+                            'schedules': data
+                        };
+                        that.drawChart(data);
+                        that.data = data;
+                    }
+                }
+                if (callback) {
+                    callback('success', true);
+                }
+                ZEPHYR.Loading.hideLoadingIndicator();
+            },
+            error: function (response) {
+                AJS.$('#zephyr-test-report').children().not('#back').remove();
+                if (callback) {
+                    callback('error', false);
+                }
+                ZEPHYR.Loading.hideLoadingIndicator();
+            }
+        };
+        ZEPHYR.Loading.showLoadingIndicator();
+        AJS.$.ajax(ajaxOptions);
+    },
+    drawChart: function (schedules) {
+        var chartDiv, i, statusId,
+            colors = [];
+
+        chartDiv = '<div id="chartdiv" align="center" style="height:100%; width:100%; min-width:400px; margin:auto"/><div id="chartLegend" style="width:400px; margin: 0 auto;"/>';
+        AJS.$('#zephyr-test-report').children().not('#back').remove();
+        AJS.$(chartDiv).appendTo(AJS.$('#zephyr-test-report'));
+
+        if (schedules && schedules.statusSeries) {
+            for (statusId in schedules.statusSeries) {
+                if (schedules.statusSeries[statusId]) {
+                    colors.push({
+                        label: schedules.statusSeries[statusId].name,
+                        color: schedules.statusSeries[statusId].color
+                    });
+                }
+            }
+        }
+
+        if (schedules && schedules.data && schedules.data.length > 0) {
+            var chartData = [];
+
+            /*Iterate over all the column data, one at a time*/
+            for (i in schedules.data) {
+                var scheduleData = {
+                    testCycle: schedules.data[i].id,
+                    testCycleName: schedules.data[i].name,
+                    total: schedules.data[i].cnt.total,
+                    values: []
+                };
+                var y0 = 0,
+                    yT = 0;
+                /*Now, lets dynamically create the chart series */
+                for (statusId in schedules.statusSeries) {
+                    var statusCnt = schedules.data[i].cnt[statusId] || 0;
+
+                    yT = y0 + statusCnt;
+                    scheduleData.values.push({
+                        name: schedules.statusSeries[statusId].name,
+                        total: scheduleData.total,
+                        y0: y0,
+                        y1: yT,
+                        color: schedules.statusSeries[statusId].color
+                    });
+                    y0 = y0 + statusCnt;
+                }
+                chartData.push(scheduleData);
+            }
+            this.showChart(chartData, colors);
+        } else {
+            this.renderEmptyChart(colors);
+        }
+    },
+    renderEmptyChart: function (colors) {
+        var that = this;
+        var margin = {
+                top: 20,
+                right: 20,
+                bottom: 60,
+                left: 40
+            },
+            width = 800,
+            height = 450;
+
+        if (ZEPHYR.REPORTS.ISGADGET) {
+            width = 450;
+        }
+
+        width = AJS.$('#chartdiv').width() || width;
+
+        var svg = d3.select('#chartdiv')
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+        svg.append('line')
+            .attr('x1', 50)
+            .attr('y1', 20)
+            .attr('x2', 50)
+            .attr('y2', 500)
+            .attr('stroke-width', 1)
+            .attr('stroke', '#625F5F');
+
+        svg.append('line')
+            .attr('x1', 50)
+            .attr('y1', 500)
+            .attr('x2', 800)
+            .attr('y2', 500)
+            .attr('stroke-width', 1)
+            .attr('stroke', '#625F5F');
+
+        that.renderLegend(colors);
+    },
+    renderLegend: function (colors) {
+        // Empty the legend element
+        d3.select('#chartLegend').html('');
+        var width = 800;
+        if (ZEPHYR.REPORTS.ISGADGET) {
+            width = 450;
+        }
+        var legend = d3.select('#chartLegend')
+            .style({
+                'height': '200px'
+            })
+            .append('svg')
+            .attr('width', width)
+            .append('g')
+            .attr('class', 'legend')
+            .attr('width', width);
+        // legend variables
+        var lx = 0,
+            lWidth = 0,
+            ly = 0,
+            tWidth = 0;
+        legend.selectAll('g')
+            .data(colors)
+            .enter()
+            .append('g')
+            .each(function (d, i) {
+                var g = d3.select(this);
+
+                if (i != 0) lx += lWidth + 10;
+                if (lx > 450) ly = ly + 20, lx = 0;
+                g.append('rect')
+                    .attr('x', lx)
+                    .attr('y', ly)
+                    .attr('width', 10)
+                    .attr('height', 10)
+                    .style('fill', d.color);
+
+                // Calculate the width of the legend label
+                var el = AJS.$('<span style="display:none;">' + AJS.escapeHtml(d.label) + '</span>').appendTo('#chartLegend');
+                var labelWidth = AJS.$(el).width();
+                AJS.$(el).remove();
+                lWidth = labelWidth;
+                lx = lx + 13;
+                if (i != 0) tWidth += labelWidth + 20;
+                else tWidth += labelWidth + 10;
+
+                g.append('text')
+                    .attr('x', lx)
+                    .attr('y', ly + 9)
+                    .attr('height', 35)
+                    .attr('width', labelWidth)
+                    .style('fill', '#545454')
+                    .text(d.label);
+            });
+    },
+    showChart: function (chartData, colors) {
+        var that = this,
+            isRotationReq = false;
+        if (chartData.length == 0) {
+            return false;
+        }
+        AJS.$('#chartdiv').empty();
+
+        try {
+            // Remove the tooltip element if already exist
+            AJS.$('.d3-tip').remove();
+            // Define the tooltip element
+
+            var globalMap = {};
+            chartData.forEach(function(e) {
+                globalMap[e.testCycle] = e.testCycleName;
+            });
+
+            if (chartData.length > 15) {
+
+                var tip = d3.tip()
+                    .attr('class', 'd3-tip')
+                    .html(function (data) {
+                        var percentExec = ((data.y1 - data.y0) / data.total * 100).toFixed(2);
+                        return '<div>' + d3.select(this.parentNode).data()[0].testCycleName +
+                            '</div><span>' + AJS.escapeHtml(data.name) + ' ' + (data.y1 - data.y0) + ' of ' + data.total + ' </span><br/>' + percentExec + '%';
+                    })
+                    .offset([-12, 0]);
+                var max = d3.max(chartData, function (d) {
+                    return +d.total;
+                });
+
+
+                var margin = {
+                        top: 20,
+                        right: 20,
+                        bottom: 100,
+                        left: 40
+                    },
+                    margin2 = {
+                        top: 480,
+                        right: 20,
+                        bottom: 0,
+                        left: 40
+                    };
+                margin.left = margin2.left = (String(max).length * 18);
+                var minWidth = AJS.$('#chartdiv').width() || 500,
+                    width = minWidth - margin.left - margin.right,
+                    height = 500 - margin.top - margin.bottom,
+                    height2 = 500 - margin2.top - margin2.bottom;
+
+                var x = d3.scale.ordinal().rangeRoundBands([0, width], 0.1),
+                    y = d3.scale.linear().range([height, 0]),
+                    x2 = d3.scale.ordinal().rangeBands([0, width], .1),
+                    y2 = d3.scale.linear().range([height2, 0]),
+                    color = d3.scale.ordinal().range(colors),
+                    xAxis = d3.svg.axis().scale(x).orient('bottom').tickFormat(function (d, i) {
+                        var width = x.rangeBand();
+                        var labelText = globalMap[d];
+                        if (chartData.length > 10) {
+                            if (labelText.length > 8) {
+                                return labelText.substr(0, 7) + '...';
+                            }
+                            return labelText;
+                        } else {
+                            var el = AJS.$('<span />').css({
+                                'display': 'none',
+                                'white-space': 'nowrap'
+                            }).text(labelText).appendTo('#chartdiv');
+                            var labelWidth = AJS.$(el).width();
+                            AJS.$(el).remove();
+                            var slength = Math.floor(width / labelWidth * labelText.length) - 2;
+                            if (labelWidth > width) {
+                                return labelText.substr(0, slength) + '...';
+                            }
+                            return labelText; // TODO: find an alternative to truncate using css
+                        }
+                    }),
+                    xAxis2 = d3.svg.axis().scale(x2).orient('bottom').tickValues([]),
+                    yAxis = d3.svg.axis().scale(y).orient('left').tickSize(-width).tickFormat(d3.format('d'));
+
+                x.domain(chartData.map(function (d) {
+                    return d.testCycle;
+                }));
+                y.domain([0, d3.max(chartData, function (d) {
+                    return d.total + 1;
+                })]);
+
+                x2.domain(x.domain());
+                y2.domain(y.domain());
+
+                var arc = d3.svg.arc()
+                    .outerRadius((height2) / 3)
+                    .startAngle(0)
+                    .endAngle(function (d, i) {
+                        return i ? -Math.PI : Math.PI;
+                    });
+
+                var brush = d3.svg.brush()
+                    .x(x2)
+                    .on('brush', brushed);
+
+
+                var svg = d3.select('#chartdiv')
+                    .append('svg')
+                    .attr('width', width + margin.left + margin.right)
+                    .attr('height', height + margin.top + margin.bottom);
+
+
+                var focus = svg.append('g')
+                    .attr('class', 'focus')
+                    .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+                var context = svg.append('g')
+                    .attr('class', 'context')
+                    .attr('transform', 'translate(' + margin2.left + ',' + margin2.top + ')');
+
+                // Call the tooltip on svg element.
+                svg.call(tip);
+                AJS.$('.zephyr-d3-tip').css('max-width', '200px');
+
+                // x-axis
+                focus.append('g')
+                    .attr('class', 'x axis')
+                    .attr('transform', 'translate(0,' + height + ')')
+                    .call(xAxis)
+                    .selectAll('text')
+                    .style('text-anchor', 'end')
+                    .attr('dx', '-.8em')
+                    .attr('dy', '.15em')
+                    .attr('transform', function (d) {
+                        return 'rotate(-60)';
+                    })
+                    .selectAll('.x.axis g');
+
+                // Append title for the x axis labels.
+                focus.selectAll('.x.axis text')
+                    .append('title')
+                    .text(function (d, i) {
+                        return chartData[i].testCycleName;
+                    });
+
+                // y-axis
+                focus.append('g')
+                    .attr('class', 'y axis')
+                    .call(yAxis);
+
+                enter(chartData)
+                updateScale(chartData)
+
+                context.append('g')
+                    .attr('class', 'x axis')
+                    .attr('transform', 'translate(0,' + height2 + ')')
+                    .call(xAxis2);
+
+                var brushElement = context.append('g')
+                    .attr('class', 'x brush')
+                    .call(brush);
+
+                brushElement.selectAll('rect')
+                    .attr('y', -6)
+                    .attr('height', height2 + 7);
+
+                brushElement.selectAll('.resize').append('path')
+                    .attr('transform', 'translate(0,' + height2 / 2 + ')')
+                    .attr('d', arc);
+
+                var subBars = context.selectAll('.subBar')
+                    .data(chartData)
+                    .enter()
+                    .append('g')
+                    .attr('class', 'g')
+                    .attr('transform', function (d) {
+                        return 'translate(' + x(d.testCycle) + ',0)';
+                    });
+
+                subBars.selectAll('rect')
+                    .data(function (d) {
+                        return d.values;
+                    })
+                    .enter().append('rect')
+                    .classed('subBar', true)
+                    .attr('width', x.rangeBand())
+                    .attr('y', function (d) {
+                        return y2(d.y1);
+                    })
+                    .attr('height', function (d) {
+                        return y2(d.y0) - y2(d.y1);
+                    })
+                    .style('fill', function (d) {
+                        return d.color;
+                    });
+
+                function brushed() {
+                    var selected = null;
+                    selected = x2.domain()
+                        .filter(function (d) {
+                            return (brush.extent()[0] <= x2(d)) && (x2(d) <= brush.extent()[1]);
+                        });
+
+                    var updatedData;
+
+                    if (brush.extent()[0] != brush.extent()[1]) {
+                        updatedData = chartData.filter(function (d) {
+                            return selected.indexOf(d.testCycle) !== -1;
+                        })
+                    } else {
+                        updatedData = chartData;
+                    }
+                    update(updatedData);
+                    enter(updatedData);
+                    exit(updatedData);
+                    updateScale(updatedData)
+                }
+
+                function exit(data) {
+                    var bars = focus.selectAll('.bar').data(data)
+                    bars.exit().remove()
+                }
+
+                function enter(data) {
+                    x.domain(data.map(function (d) {
+                        return d.testCycle;
+                    }));
+                    y.domain([0, d3.max(data, function (d) {
+                        return d.total + 1;
+                    })]);
+
+                    // Create bar elements
+                    var bar = focus.selectAll('g.bar')
+                        .data(data)
+                        .enter()
+                        .append('g')
+                        .attr('class', 'bar')
+                        .attr('transform', function (d) {
+                            return 'translate(' + x(d.testCycle) + ',0)';
+                        });
+
+                    bar.selectAll('rect')
+                        .data(function (d) {
+                            return d.values;
+                        })
+                        .enter().append('rect')
+                        .attr('width', x.rangeBand())
+                        .attr('y', function (d) {
+                            return y(d.y1);
+                        })
+                        .attr('height', function (d) {
+                            return y(d.y0) - y(d.y1);
+                        })
+                        .style('fill', function (d) {
+                            return d.color;
+                        })
+                        .on('mouseover', tip.show)
+                        .on('mouseout', tip.hide);
+                }
+
+                function update(data) {
+                    x.domain(data.map(function (d) {
+                        return d.testCycle
+                    }));
+
+                    y.domain([0, d3.max(data, function (d) {
+                        return d.total + 1;
+                    })]);
+
+                    var bars = focus.selectAll('.bar')
+                        .data(data)
+                        .attr('transform', function (d) {
+                            return 'translate(' + x(d.testCycle) + ',0)';
+                        });
+
+                    bars.selectAll('rect')
+                        .data(function (d) {
+                            return d.values;
+                        })
+                        .attr('width', x.rangeBand())
+                        .attr('y', function (d) {
+                            return y(d.y1);
+                        })
+                        .attr('height', function (d) {
+                            return y(d.y0) - y(d.y1);
+                        })
+                        .style('fill', function (d) {
+                            return d.color;
+                        })
+                        .on('mouseover', tip.show)
+                        .on('mouseout', tip.hide);
+
+                }
+
+                function updateScale(data) {
+                    var tickScale = d3.scale.pow().range([data.length / 30, 0]).domain([data.length, 0]).exponent(.5)
+                    var brushValue = brush.extent()[1] - brush.extent()[0];
+                    if (brushValue === 0) {
+                        brushValue = width;
+                    }
+
+                    var gadgetWidth = AJS.$("#chartdiv").width();
+                    var interval = 0;
+                    if (gadgetWidth > 900) {
+                        if(data.length <= 35) interval = Math.ceil(data.length/35);
+                    } else if(gadgetWidth > 700) {
+                        if(data.length <= 30) interval = Math.ceil(data.length/30);
+                    } else if (gadgetWidth > 400) {
+                        if (data.length <= 20) interval = Math.ceil(data.length/20);
+                    } else if (gadgetWidth > 200) {
+                        if (data.length <= 10) interval = Math.ceil(data.length/10);
+                    } else {
+                        if (data.length <= 5) interval = Math.ceil(data.length/5);
+                    }
+                    var tickValueMultiplier = Math.ceil(Math.abs(tickScale(brushValue)));
+                    var filteredTickValues = data.filter(function (d, i) {
+                        return i % interval === 0
+                    }).map(function (d) {
+                        return d.testCycle
+                    });
+
+                    focus.select('.x.axis').call(xAxis.tickValues(filteredTickValues)).selectAll('text')
+                    .attr('x', -30)
+                    .attr('y', 10)
+                    .attr('dy', '1.1em')
+                    .attr('transform', 'rotate(-55)')
+                    .style('text-anchor', 'middle')
+                    .text(function () {
+                        var originalText = d3.select(this).text();
+                        if (originalText.length > 12) {
+                            originalText.substr(0, 10) + '..'
+                        }
+                        return originalText;
+                    });
+
+                    focus.selectAll('.x.axis text')
+                        .append('title')
+                        .text(function (d, i) {
+                            return globalMap[d];
+                        });
+                    focus.select('.y.axis').call(yAxis);
+                }
+
+
+            } else {
+                var tip = d3.tip()
+                    .attr('class', 'd3-tip')
+                    .html(function (data) {
+                        var percentExec = ((data.y1 - data.y0) / data.total * 100).toFixed(2);
+                        return '<span>' + AJS.escapeHtml(data.name) + ' ' + (data.y1 - data.y0) + ' of ' + data.total + ' </span><br/>' + percentExec + '%';
+                    })
+                    .offset([-12, 0]);
+
+                var margin = {
+                        top: 20,
+                        right: 20,
+                        bottom: 60,
+                        left: 40
+                    },
+                    width = 800;
+
+                if (ZEPHYR.REPORTS.ISGADGET) {
+                    width = 450;
+                }
+
+                var fullWidth = AJS.$('#chartdiv').width();
+                width = fullWidth ? fullWidth - 70 : width;
+
+                var height = 450,
+                    x = d3.scale.ordinal().rangeRoundBands([0, width], 0.1),
+                    y = d3.scale.linear().range([height, 0]),
+                    color = d3.scale.ordinal().range(colors),
+                    xAxis = d3.svg.axis().scale(x).orient('bottom').tickFormat(function (d, i) {
+                        var width = x.rangeBand();
+                        var labelText = chartData[i].testCycleName;
+                        var el = AJS.$('<span style="display:none;white-space: nowrap;">' + AJS.escapeHtml(labelText) + '</span>').appendTo('#chartdiv');
+                        var labelWidth = AJS.$(el).width();
+                        AJS.$(el).remove();
+                        var slength = Math.floor(width / labelWidth * labelText.length) - 2;
+                        if (slength <= 0) {
+                            slength = 2;
+                            isRotationReq = true;
+                        }
+                        if (labelWidth > width) return labelText.substr(0, slength) + '...';
+                        else return labelText; // TODO: find an alternative to truncate using css
+                    }),
+                    yAxis = d3.svg.axis().scale(y).orient('left').tickSize(-width).tickFormat(d3.format('d'));
+
+                var svg = d3.select('#chartdiv')
+                    .append('svg')
+                    .attr('width', width + margin.left + margin.right)
+                    .attr('height', height + margin.top + margin.bottom)
+                    .append('g')
+                    .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+                // Call the tooltip on svg element.
+                svg.call(tip);
+
+                // Calculate the x and y axis domain
+                var max = d3.max(chartData, function (d) {
+                    return d.total;
+                });
+                x.domain(chartData.map(function (d) {
+                    return d.testCycle;
+                }));
+                y.domain([0, (max + 1)]);
+
+                // x-axis
+                svg.append('g')
+                    .attr('class', 'x axis')
+                    .attr('transform', 'translate(0,' + height + ')')
+                    .call(xAxis)
+                    .selectAll('.x.axis g');
+
+                // Append title for the x axis labels.
+                svg.selectAll('.x.axis text')
+                    .append('title')
+                    .text(function (d, i) {
+                        return chartData[i].testCycleName;
+                    });
+
+                if (isRotationReq) {
+                    svg.selectAll('.x.axis text')
+                        .attr('transform', function (d) {
+                            return 'rotate(-65)';
+                        })
+                        .style({
+                            'text-anchor': 'end'
+                        });
+                }
+
+                // y-axis
+                svg.append('g')
+                    .attr('class', 'y axis')
+                    .call(yAxis);
+
+                // Create bar elements
+                var bar = svg.selectAll('g.bar')
+                    .data(chartData)
+                    .enter()
+                    .append('g')
+                    .attr('class', 'g')
+                    .attr('transform', function (d) {
+                        return 'translate(' + x(d.testCycle) + ',0)';
+                    });
+
+                bar.selectAll('rect')
+                    .data(function (d) {
+                        return d.values;
+                    })
+                    .enter().append('rect')
+                    .attr('width', x.rangeBand())
+                    .attr('y', function (d) {
+                        return y(d.y1);
+                    })
+                    .attr('height', function (d) {
+                        return y(d.y0) - y(d.y1);
+                    })
+                    .style('fill', function (d) {
+                        return d.color;
+                    })
+                    .on('mouseover', tip.show)
+                    .on('mouseout', tip.hide);
+            }
+
+            that.renderLegend(colors);
+        } catch (exe) {
+            // First time after gadget configuration update, height and width are coming as zero or so and hence exception is thrown.
+            // Since we are calling chart again during resize, do nothing in first call!
+            console.log(exe);
+        }
+    }
+});

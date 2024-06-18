@@ -1,0 +1,148 @@
+/*
+ * D3 chart
+ */
+/* Tooltip */ 
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+  pointer-events: none !important;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip.w:after {
+    box-sizing: border-box;
+    display: inline;
+    font-size: 10px;
+    width: 100%;
+    line-height: 1;
+    color: rgba(0, 0, 0, 0.8);
+    content: "\25B6";
+    position: absolute;
+    text-align: center;
+  }
+
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip.n:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+
+
+.d3-tip.w:after {
+    margin: 0px 0 0 0;
+    top: 50%;
+    left: 50%;
+  }
+
+ 
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #A9A9A9;
+  shape-rendering: crispEdges;
+}
+
+.bar {
+  fill: #336699;
+}
+
+.bar:hover {
+  fill: #205081 ;
+}
+
+.subBar {
+    fill: gray;
+    opacity: 0.5;
+}
+
+.brush .extent {
+    stroke: #fff;
+    fill: steelblue;
+    fill-opacity: .25;
+    shape-rendering: crispEdges;
+}
+
+svg .legend {
+   padding: 5px;
+   font-size: 10px;
+   box-shadow: 2px 2px 1px #888;
+}
+  
+/*#chartLegend svg {
+	 position: absolute;
+    top:0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+}*/
+  
+svg .line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+}
+
+svg .burndown-line {
+    fill: none;
+    stroke: none;
+    stroke-width: 1.5px;
+}
+
+svg .summary-execution-line {
+    fill: transparent;
+    stroke: #A5EB84;
+    stroke-width: 3px;
+}
+
+svg .summary-creation-line {
+    fill: transparent;
+    stroke: #BCC3C3;
+    stroke-width: 3px;
+}
+
+svg .area {
+    fill: none;
+    opacity: 0.5;
+}
+
+svg .dot {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+}
+
+/* x and y axis text*/
+.x.axis text, .y.axis text {
+  	fill: #545454;
+  	font-size: 11px;
+}
+
+.tooltip {
+  line-height: 1;
+  /* font-weight: bold; */
+  padding: 12px;
+  background: lightgrey;
+  border-radius: 2px;
+  pointer-events: none !important;
+ }

@@ -1,0 +1,37 @@
+// This file was automatically generated from dialog.soy.
+// Please don't edit this file by hand.
+
+/**
+ * @fileoverview Templates in namespace ZEPHYR.Templates.Dialog.
+ */
+
+if (typeof ZEPHYR == 'undefined') { var ZEPHYR = {}; }
+if (typeof ZEPHYR.Templates == 'undefined') { ZEPHYR.Templates = {}; }
+if (typeof ZEPHYR.Templates.Dialog == 'undefined') { ZEPHYR.Templates.Dialog = {}; }
+
+
+ZEPHYR.Templates.Dialog.renderDialog = function(opt_data, opt_ignored) {
+  var output = '<!-- Render the dialog --><section role="dialog" id="' + opt_data.dialogId + '" class="aui-layer aui-dialog2 ' + opt_data.dialogSize + '" aria-hidden="true" data-aui-remove-on-hide="true"' + ((opt_data.isModal) ? ' data-aui-modal="true"' : '') + '><!-- Dialog header --><header class="aui-dialog2-header"><!-- The dialog\'s title --><h2 class="aui-dialog2-header-main">' + opt_data.dialogHeader + '</h2></header>';
+  if (opt_data.menuItems) {
+    output += '<div class="dialog-page-menu">';
+    var itemList17 = opt_data.menuItems;
+    var itemListLen17 = itemList17.length;
+    for (var itemIndex17 = 0; itemIndex17 < itemListLen17; itemIndex17++) {
+      var itemData17 = itemList17[itemIndex17];
+      output += '<span class="page-menu-item"><button class="item-button" id="' + itemData17.id + '">' + itemData17.name + '</button></span>';
+    }
+    output += '</div>';
+  }
+  output += '<!-- Main dialog content --><div class="aui-dialog2-content"><span class="message-bar"></span><span class="dialog2-content">' + opt_data.dialogContent + '</span></div><!-- Dialog footer --><footer class="aui-dialog2-footer"><!-- Actions to render on the right of the footer --><div class="aui-dialog2-footer-actions"><span id="dialog-icon-wait" class="aui-icon aui-icon-wait zfj-icon-wait" style="display:none">Loading...</span>';
+  var buttonList28 = opt_data.dialogButtons;
+  var buttonListLen28 = buttonList28.length;
+  for (var buttonIndex28 = 0; buttonIndex28 < buttonListLen28; buttonIndex28++) {
+    var buttonData28 = buttonList28[buttonIndex28];
+    output += '<button id="' + buttonData28.id + '" class="aui-button ' + ((buttonData28.type == 'link') ? 'aui-button-link' : '') + '">' + buttonData28.name + '</button>';
+  }
+  output += '</div></footer></section>';
+  return output;
+};
+if (goog.DEBUG) {
+  ZEPHYR.Templates.Dialog.renderDialog.soyTemplateName = 'ZEPHYR.Templates.Dialog.renderDialog';
+}

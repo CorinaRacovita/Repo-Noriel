@@ -1,0 +1,85 @@
+body{
+	background-color: #FFFFFF;
+}
+header{
+	padding: 20px;
+	background-color: #F5F5F5;
+	border-bottom: 1px solid lightgrey;
+}
+summary{
+	padding: 20px 20px 20px 20%;
+}
+section#config{
+	width: 50%;
+	height: 200px;
+	margin-left: 20%;
+	border: 1px solid lightgrey;
+	border-radius: 4px;
+	box-shadow: 0 0 1px lightgrey;
+	padding: 20px;
+	margin-bottom: 120px;
+	padding-left: 120px;
+	padding-bottom: 40px;
+}
+section ul{
+	padding: 4px;
+}
+section li {
+	list-style-type: none;
+ 	display: inline-block;
+}
+section li:first-child {
+  	width: 20%;
+}
+.buttons{
+	float: right;
+}
+.buttons li:first-child{
+	width: 55px;
+}
+.show{
+	display: block;
+}
+.hide{
+	display: none;
+}
+#back{
+	margin-left: 2%;
+	margin-top: -4%;
+	position: absolute;
+}
+#pickStatus-dd{
+	width: 200px;
+}
+.expandSectionHeight{
+	height: 310px !important;
+}
+.pickStatusLabel{
+	vertical-align: top;
+}
+#defectTable{
+    border: 2px solid black;
+    margin: 0 auto;
+    margin-top: 10px;
+    width: 80%;
+}
+#defectTable th, #defectTable td{
+    text-align: center;
+    border: 1px solid black;
+}
+#chartdiv svg { 
+    overflow: hidden;
+}
+#defectTable thead {
+  background-color: #f0f0f0;
+  vertical-align: bottom;
+}
+.errorMessage{
+	margin: 0 auto;
+	width: 15%;
+	position: relative;
+	display: block;
+	font-size: large;
+	color: rgb(211, 29, 29);
+	padding-top: 35px;
+}

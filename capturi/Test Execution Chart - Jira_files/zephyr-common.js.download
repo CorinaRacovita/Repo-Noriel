@@ -1,0 +1,1957 @@
+/**
+ * Execution Page
+ */
+ window.ZEPHYR = window.ZEPHYR || {};
+ ZEPHYR.TEST = ZEPHYR.TEST || {};
+ ZEPHYR.API = ZEPHYR.API || {};
+
+ZEPHYR.TEST.marketPlaceLink = 'https://marketplace.atlassian.com/plugins/com.thed.zephyr.je';
+
+// Plugin Key
+ZEPHYR.TEST.PLUGIN_KEY = {
+    setPluginKey: function(pk) {
+        this.pluginKey = pk;
+    },
+    getPluginKey: function() {
+        return this.pluginKey;
+    }
+};
+
+ZEPHYR.TEST.addJWTToken = function(token) {
+    AJS.$.ajaxPrefilter(function(options) {
+        if (!options.beforeSend) {
+            options.beforeSend = function (xhr) {
+                var currentToken = $('meta[name="acpt"]').attr('content');
+                xhr.setRequestHeader('X-acpt', currentToken);
+            }
+        }
+    });
+}
+
+// Getters and setters for project
+ZEPHYR.TEST.Project = {
+    setProjectId: function(projectId) {
+        this.projectId = projectId;
+    },
+    getProjectId: function() {
+        return this.projectId;
+    },
+    setProject: function(project) {
+        this.project = project;
+    },
+    getProject: function() {
+        return this.project;
+    },
+    setProjectKey: function(projectKey) {
+        this.projectKey = projectKey;
+    },
+    getProjectKey: function() {
+        return this.projectKey;
+    },
+    fetchProjectDetails: function(projectId) {
+        AP.require('request', function(request) {
+            request({
+                url: '/rest/api/2/project/' + projectId,
+                success: function(project) {
+                    var projectJSON = AJS.$.parseJSON(project);
+                    ZEPHYR.TEST.Project.setProject(projectJSON);
+                }
+            });
+        });
+    }
+};
+
+//Getters and setters for issue
+ZEPHYR.TEST.Issue = {
+    setIssueId: function(issueId) {
+        this.issueId = issueId;
+    },
+    getIssueId: function() {
+        return this.issueId;
+    },
+    setIssue: function(issue) {
+        this.issue = issue;
+    },
+    getIssue: function() {
+        return this.issue;
+    },
+    setIssueKey: function(issueKey) {
+        this.issueKey = issueKey;
+    },
+    getIssueKey: function() {
+        return this.issueKey;
+    }
+};
+
+// Getters and setters for issue
+ZEPHYR.TEST.Version = {
+    unScheduledVersion: function() {
+        return {
+            self: '',
+            id: -1,
+            name: 'Unscheduled',
+            archived: false,
+            released: false
+        };
+    },
+    setVersions: function(versions) {
+        this.versions = versions;
+    },
+    getVersions: function() {
+        return this.versions;
+    },
+    setVersion: function(version) {
+        this.version = version;
+    },
+    getVersion: function() {
+        return this.version;
+    },
+    parseVersions: function(versions) {
+        var versionsJSON = {
+            releasedVersions: [],
+            unreleasedVersions: [],
+            all: []
+        };
+        var unScheduledVersion = this.unScheduledVersion();
+        versionsJSON.unreleasedVersions.push(unScheduledVersion);
+        versionsJSON.all.push(unScheduledVersion);
+        AJS.$.each(versions, function(i, version) {
+            versionsJSON.all.push(version);
+            if (version.released) {
+                versionsJSON.releasedVersions.push(version);
+            } else {
+				versionsJSON.unreleasedVersions.push(version);
+			}
+        });
+        return versionsJSON;
+    }
+};
+
+//Getters and setters for context path
+ZEPHYR.TEST.ContextPath = {
+    setContextPaths: function(cp, zcp) {
+		zcp = zcp || '/';
+        this.setContextPath(cp);
+        this.setZContextPath(zcp);
+    },
+
+    /* Format /ContextPath/ */
+    setZContextPath: function(zcp) {
+        this.zcp = zcp;
+    },
+
+    getZContextPath: function() {
+        return this.zcp;
+    },
+
+    setContextPath: function(cp) {
+        this.cp = cp;
+    },
+    getContextPath: function() {
+        return this.cp;
+    }
+};
+
+//Getters and setters for baseURL
+ZEPHYR.TEST.BaseURL = {
+    setBaseURL: function(xdm_e) {
+        this.xdm_e = xdm_e;
+    },
+    getBaseURL: function() {
+        return this.xdm_e;
+    }
+};
+
+ZEPHYR.TEST.getCacheInterceptor = function() {
+    return '_=' + new Date().getTime();
+};
+
+// Loading indicator
+ZEPHYR.Loading = {
+    showLoadingIndicator: function(options) {
+        if (this.get$loadingIndicator().css('display') === 'block') {
+			return
+		}
+        var heightOfSprite = 440,
+            currentOffsetOfSprite = 0,
+            instance = this;
+        clearInterval(this.loadingTimer);
+        this.get$loadingIndicator().show();
+        if (options && options.hideBlanket) {
+            this.get$zfjAuiBlanket().hide();
+        } else {
+            this.get$zfjAuiBlanket().show();
+        }
+        this.loadingTimer = window.setInterval(function() {
+            if (currentOffsetOfSprite === heightOfSprite) {
+                currentOffsetOfSprite = 0;
+            }
+            currentOffsetOfSprite = currentOffsetOfSprite + 40;
+            instance.get$loadingIndicator().css('backgroundPosition', '0 -' + currentOffsetOfSprite + 'px');
+        }, 50);
+    },
+
+    hideLoadingIndicator: function() {
+        clearInterval(this.loadingTimer);
+        this.get$loadingIndicator().hide();
+        this.get$zfjAuiBlanket().hide();
+        // this.get$zfjLoadingMessage('').hide();
+    },
+
+    showLoadingMessage: function(message) {
+        this.get$zfjLoadingMessage(message).show();
+    },
+
+    get$loadingIndicator: function() {
+        if (!ZEPHYR.Loading.$loadingIndicator) {
+            ZEPHYR.Loading.$loadingIndicator = AJS.$('<div />').addClass('zfj-loading-indicator').css('zIndex', 9999).appendTo('body');
+        }
+        return ZEPHYR.Loading.$loadingIndicator;
+    },
+
+    get$zfjAuiBlanket: function() {
+        if (!ZEPHYR.Loading.$zfjAuiBlanket) {
+            ZEPHYR.Loading.$zfjAuiBlanket = AJS.$('<div class="aui-blanket" id="zfj-aui-blanket"></div>').appendTo('body');
+        }
+        return ZEPHYR.Loading.$zfjAuiBlanket;
+
+    },
+
+    get$zfjLoadingMessage: function(message) {
+        if (!ZEPHYR.Loading.$zfjLoadingMessage) {
+            ZEPHYR.Loading.$zfjLoadingMessage = AJS.$('<div class="zfj-loading-message" id="zfj-loading-message">' + message + '</div>').appendTo('body');
+            AJS.$('#zfj-loading-message').css({
+                'margin-left': -(AJS.$('#zfj-loading-message').width() / 2)
+            });
+        }
+        return ZEPHYR.Loading.$zfjLoadingMessage;
+
+    }
+};
+
+// Scroll lock
+ZEPHYR.scrollLock = function(selector, scrollInterval) {
+    var DEFAULT_SCROLL_INTERVAL = 30;
+    if (typeof selector !== 'string') {
+        scrollInterval = selector;
+        selector = null;
+    }
+    if (!scrollInterval) {
+        scrollInterval = DEFAULT_SCROLL_INTERVAL;
+    }
+    AJS.$(selector).on('DOMMouseScroll mousewheel', function(ev) {
+        ev.preventDefault();
+        var d;
+        if (ev.originalEvent.wheelDelta) {
+			d = ev.originalEvent.wheelDelta / 120;
+		}
+        if (ev.originalEvent.detail) {
+			d = -ev.originalEvent.detail / 3;
+		}
+        this.scrollTop -= d * scrollInterval;
+    });
+};
+
+// Messages: error handling
+
+ZEPHYR.Messages = {
+    isShowing: {},
+    showErrorMessage: function(errorMessage, timePeriod) {
+        var that = this,
+            _timePeriod = timePeriod || 2000;
+        if (that.isShowing[errorMessage] === undefined) {
+            that.isShowing[errorMessage] = false;
+        }
+        AP.require('messages', function(messages) {
+            if (that.isShowing[errorMessage] === false) {
+                that.isShowing[errorMessage] = true;
+                var message = messages.error(Messages('zephyr.submit.form.error.title'), errorMessage);
+                setTimeout(function() {
+                    messages.clear(message);
+                    that.isShowing[errorMessage] = false;
+                }, _timePeriod);
+            }
+        });
+    },
+    showWarningMessage: function(warningMessage, timePeriod) {
+        var that = this,
+            _timePeriod = timePeriod || 2000;
+        if (that.isShowing[warningMessage] === undefined) {
+            that.isShowing[warningMessage] = false;
+        }
+        AP.require('messages', function(messages) {
+            if (that.isShowing[warningMessage] === false) {
+                that.isShowing[warningMessage] = true;
+                var message = messages.warning(Messages('zephyr.submit.form.warning.title'), warningMessage);
+                setTimeout(function() {
+                    messages.clear(message);
+                    that.isShowing[warningMessage] = false;
+                }, _timePeriod);
+            }
+        });
+    },
+    showSuccessMessage: function(successMessage) {
+        AP.require('messages', function(messages) {
+            var message = messages.success(
+                Messages('execute.test.success.header'),
+                successMessage, {
+                    fadeout: true,
+                    delay: 2000,
+                    duration: 1000
+                }
+            );
+        });
+    },
+    getText: function(params) {
+        return Messages.apply(null, params);
+    }
+};
+
+// Generating page numbers for pagination
+ZEPHYR.generatePageNumbers = function(totalCount, currentIndex, maxResults) {
+
+    currentIndex = currentIndex || 1;
+    var i, pageNumbers = [];
+    var endIndex = Math.ceil(totalCount / maxResults);
+    var PAGINATION_SIZE = 5;
+    if (endIndex <= PAGINATION_SIZE) {
+        for (i = 1; i <= endIndex; i++) {
+            pageNumbers.push(i);
+        }
+    } else {
+        if (currentIndex === endIndex) {
+            for (i = 1; i <= PAGINATION_SIZE; i++) {
+                pageNumbers.push(currentIndex - (PAGINATION_SIZE - i));
+            }
+        } else if (currentIndex === endIndex - 1) {
+            for (i = 1; i <= PAGINATION_SIZE; i++) {
+                pageNumbers.push(currentIndex - (PAGINATION_SIZE - 1 - i));
+            }
+        } else if (currentIndex <= PAGINATION_SIZE - 2) {
+            for (i = 1; i <= PAGINATION_SIZE; i++) {
+                pageNumbers.push(i);
+            }
+        } else {
+            for (i = 0; i < PAGINATION_SIZE; i++) {
+                pageNumbers.push(currentIndex - (PAGINATION_SIZE - 3 - i));
+            }
+        }
+    }
+    return pageNumbers;
+};
+
+ZEPHYR.License = {
+
+    evalMessage: function(params, elem, callback) {
+
+        /*var licenseMap = {
+           'key': 'example-addon',
+           'version': '1.0',
+           'state': 'ENABLED',
+           'host': {
+              'product': 'JIRA',
+              'contacts': [
+                 {
+                    'name': 'Example Contact',
+                    'email': 'con...@example.com'
+                 }
+              ]
+           },
+           'license': {
+              'active': true,
+              'type': 'COMMERCIAL',
+              'evaluation': false,
+              'supportEntitlementNumber': 'SEN-###'
+           },
+           'links': {
+              'marketplace': [
+                 {
+                    'href': 'http://marketplace.atlassian.com/plugins/example-addon'
+                 }
+              ],
+              'self': [
+                 {
+                    'href': 'http://example.com/rest/atlassian-connect/latest/example-addon'
+                 }
+              ]
+           }
+        };*/
+
+        AJS.$.get(ZEPHYR.TEST.ContextPath.getZContextPath() + 'zLicense').done(function(licenseMap) {
+
+            if (licenseMap.license.evaluation) {
+
+                var body, msg,
+					today = new Date(),
+                    expDate = new Date(licenseMap.license.expiryDate);
+
+                body = (expDate >= today) ? Messages('license.eval.message.valid.body', expDate) : Messages('license.eval.message.expired.body', expDate);
+
+                body += Messages('license.eval.message.remaining.body', '<a target="_parent" href=' + ZEPHYR.TEST.marketPlaceLink + '>', '</a>');
+
+                msg = '<div class="zfjEvalLic aui-message info" style="margin:10px 10px 10px 10px;"><div class="title"><span class="aui-icon icon-info"></span><strong>' + Messages('license.eval.message.heading') + '</strong></div><small>' + body + '</small></div>';
+
+                if (elem) {
+                    elem.append(msg);
+                } else {
+                    params = params || {
+                        selector: this,
+                        position: after
+                    };
+                    var operation = params.position || 'after';
+                    AJS.$(params.selector)[operation](msg);
+                }
+
+				if (callback instanceof Function) {
+                    callback();
+                }
+            }
+        });
+    }
+
+};
+
+// UI KeyCodes
+ZEPHYR.ui = {
+    keyCode: {
+        ALT: 18,
+        BACKSPACE: 8,
+        CAPS_LOCK: 20,
+        COMMA: 188,
+        COMMAND: 91,
+        COMMAND_LEFT: 91,
+        COMMAND_RIGHT: 93,
+        CONTROL: 17,
+        DELETE: 46,
+        DOWN: 40,
+        END: 35,
+        ENTER: 13,
+        ESCAPE: 27,
+        HOME: 36,
+        INSERT: 45,
+        LEFT: 37,
+        MENU: 93,
+        NUMPAD_ADD: 107,
+        NUMPAD_DECIMAL: 110,
+        NUMPAD_DIVIDE: 111,
+        NUMPAD_ENTER: 108,
+        NUMPAD_MULTIPLY: 106,
+        NUMPAD_SUBTRACT: 109,
+        PAGE_DOWN: 34,
+        PAGE_UP: 33,
+        PERIOD: 190,
+        RIGHT: 39,
+        SHIFT: 16,
+        SPACE: 32,
+        TAB: 9,
+        UP: 38,
+        WINDOWS: 91
+    }
+};
+
+/**
+ * @param ZEPHYR.projectCentricView
+ */
+ZEPHYR.TEST.URL = {
+    // {call ZEPHYR.TEST.URL.getCycleURL data='[$projectKey, $versionId, $cycleId]' /}
+    getCycleURL: function(cycleParams) {
+        var contextPath = ZEPHYR.TEST.ContextPath.getContextPath(),
+            baseURL = ZEPHYR.TEST.BaseURL.getBaseURL(),
+            pluginKey = ZEPHYR.TEST.PLUGIN_KEY.getPluginKey(),
+            urlSuffix = '&version.id=' + cycleParams[1] + '&cycle.id=' + cycleParams[2];
+        if (cycleParams[3]) {
+            urlSuffix = urlSuffix + '&folder.id=' + cycleParams[3];
+        }
+        if (ZEPHYR.projectCentricView) {
+            return baseURL + contextPath + '/projects/' + cycleParams[0] + '/?selectedItem=' + ZEPHYR.TEST.PLUGIN_KEY.getPluginKey() + '__project-centric-view-tests-page-adg&testsTab=test-cycles-tab' + urlSuffix;
+        }
+		return baseURL + contextPath + '/browse/' + cycleParams[0] + '/?selectedTab=' + pluginKey + '__cycle-tab' + urlSuffix;
+    },
+    // {call ZEPHYR.TEST.URL.getExecutionURL data='[$projectId, $issueId, $executionId, $filterId, $zql, $offset]' /}
+    getExecutionURL: function(execution) {
+        var contextPath = ZEPHYR.TEST.ContextPath.getContextPath(),
+            baseURL = ZEPHYR.TEST.BaseURL.getBaseURL(),
+            pluginKey = ZEPHYR.TEST.PLUGIN_KEY.getPluginKey(),
+            executionURL = baseURL + contextPath + '/plugins/servlet/ac/' + pluginKey + '/general-search-test-executions-old?project.id=' + execution[0] + '&issue.id=' + execution[1] + '&execution.id=' + execution[2];
+
+        if (!ZEPHYR.projectCentricView) {
+            executionURL += '&pcv=false';
+        }
+        executionURL += '#!';
+        if (execution[4]) {
+            executionURL += 'offset=' + execution[5];
+            executionURL += '&zql=' + encodeURIComponent(execution[4]);
+        }
+        if (execution[3]) {
+            executionURL += '&filter=' + execution[3];
+        }
+        if (execution[6]) {
+            executionURL += '&isAgileView=' + execution[6];
+            executionURL += '&boardId=' + execution[7];
+            executionURL += '&boardMode=' + execution[8];
+            executionURL += '&boardView=' + execution[9];
+        }
+        return executionURL;
+    },
+
+    // {call ZEPHYR.TEST.URL.splitAndJoinString data='str, splitDelimiter, joinDelimiter]' /}
+    splitAndJoinString: function(data) {
+        return data[0].split(data[1]).join(data[2]);
+    },
+
+    // {call ZEPHYR.TEST.URL.getSearchExecutionsURL data='[$projectKey, $projectId, $filterId, $zql, $viewType, $offset]' /}
+    getSearchExecutionsURL: function(execution) {
+        var contextPath = ZEPHYR.TEST.ContextPath.getContextPath(),
+            baseURL = ZEPHYR.TEST.BaseURL.getBaseURL(),
+            pluginKey = ZEPHYR.TEST.PLUGIN_KEY.getPluginKey(),
+            executionURL = baseURL + contextPath + '/plugins/servlet/ac/' + pluginKey + '/general-executions-enav?project.id=' + execution[1],
+            viewType = execution[4] || 'list',
+            offset = execution[5] || 0;
+
+        if (execution[0]) {
+            executionURL += '&project.key=' + execution[0];
+        }
+        if (!ZEPHYR.projectCentricView) {
+            executionURL += '&pcv=false';
+        }
+        executionURL += '#!';
+        executionURL += 'view=' + viewType; // view=list/detail
+        executionURL += '&offset=' + offset;
+        if (execution[2]) {
+            executionURL += '&filter=' + execution[2];
+        }
+        if (execution[3]) {
+            executionURL += '&zql=' + encodeURIComponent(execution[3]);
+        }
+
+        return executionURL;
+    },
+    // {call ZEPHYR.TEST.URL.getIssueURL data='[$issueKey]' /}
+    getIssueURL: function(issueKey) {
+        var contextPath = ZEPHYR.TEST.ContextPath.getContextPath(),
+            baseURL = ZEPHYR.TEST.BaseURL.getBaseURL();
+
+        return baseURL + contextPath + '/browse/' + issueKey;
+    }
+};
+
+ZEPHYR.TEST.copyText = function(copyInput, afterCopy) {
+    copyInput.select();
+    try {
+        var successful = document.execCommand('copy');
+        if (typeof afterCopy === 'function') {
+            afterCopy();
+        }
+    } catch (err) {
+        console.log('Unable to copy');
+    }
+};
+
+/**
+ * If location is passed, this will extract parameter based on that, else uses parent window location
+ * @param loc
+ */
+ZEPHYR.TEST.setProjectCentricFromURL = function(loc) {
+    var extractPCV = function(location) {
+        ZEPHYR.projectCentricView = true;
+        if (typeof ZephyrURL != 'undefined') {
+            var pcv = ZephyrURL('?pcv', location);
+
+            if (pcv === 'false' || pcv === false) {
+                ZEPHYR.projectCentricView = JSON.parse(pcv);
+            }
+        }
+    };
+    if (loc) {
+        extractPCV(loc)
+    } else {
+        AP.getLocation(function(location) {
+            extractPCV(location)
+        });
+    }
+
+};
+
+ZEPHYR.TEST.tokenExpiryTimerId = null;
+ZEPHYR.TEST.tokenExpiryTimeDiff = 120000; //2 mins
+
+// Start the timer to check the token expiry
+ZEPHYR.TEST.initiateTokenExpiryTimer = function(expiryTime) {
+
+    if (!expiryTime) {
+        return;
+    }
+
+    ZEPHYR.TEST.tokenExpiryTime = expiryTime;
+    ZEPHYR.TEST.tokenExpiryTimerId = setTimeout(function() {
+        AJS.$.get(ZEPHYR.TEST.ContextPath.getZContextPath() + 'private/rest/api/' + ZEPHYR.API.Version.getVersion() + '/checkTokenExpiryStatus').success(function(responseText, success, response) {
+            var token = response.getResponseHeader('X-acpt');
+            AJS.$('[name="acpt"]').attr('content', token);
+        });
+    }, expiryTime - ZEPHYR.TEST.tokenExpiryTimeDiff);
+};
+
+// Check if response string is a valid JSON
+ZEPHYR.TEST.checkValidJSON = function(text) {
+    var isValid;
+    try {
+        var responseJSON = JSON.parse(text);
+        isValid = true;
+    } catch (e) {
+        isValid = false;
+    }
+    return isValid;
+};
+
+// Encoding of reserves !, ', (, ), and *
+ZEPHYR.TEST.fixedEncodeURIComponent = function(str) {
+    return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+        return '%' + c.charCodeAt(0).toString(16);
+    });
+};
+
+
+ZEPHYR.TEST.sortBy = {
+
+    sortByAscending: function(arr, property) {
+        if (!property) {
+            return;
+        }
+        return arr.slice(0).sort(function(a, b) {
+            if (typeof a[property] === 'number' || typeof b[property] === 'number') {
+                return (a[property] > b[property]) ? 1 : (a[property] < b[property]) ? -1 : 0;
+            }
+            return (a[property].toLowerCase() > b[property].toLowerCase()) ? 1 : (a[property].toLowerCase() < b[property].toLowerCase()) ? -1 : 0;
+        });
+    },
+    sortByDescending: function(arr, property) {
+        if (!property) {
+            return;
+        }
+        return arr.slice(0).sort(function(a, b) {
+            if (typeof a[property] === 'number' || typeof b[property] === 'number') {
+                return (a[property] > b[property]) ? -1 : (a[property] < b[property]) ? 1 : 0;
+            }
+            return (a[property].toLowerCase() > b[property].toLowerCase()) ? -1 : (a[property].toLowerCase() < b[property].toLowerCase()) ? 1 : 0;
+        });
+    }
+};
+
+ZEPHYR.TEST.getJobProgress = function(jobProgressTicket, onRedeem, onFailure, customOptions, token) {
+    var options = {
+        url: ZEPHYR.TEST.ContextPath.getZContextPath() + 'public/rest/api/' + ZEPHYR.API.Version.getVersion() + '/jobprogress/' + jobProgressTicket + '?' + ZEPHYR.TEST.getCacheInterceptor(),
+        type: 'GET',
+        complete: function(jqXHR) {
+            if (onRedeem && jqXHR.status == 200) {
+                onRedeem(AJS.$.parseJSON(jqXHR.responseText));
+            } else {
+                onFailure(jqXHR.responseText);
+            }
+        }
+    };
+    if (customOptions) {
+        for (var prop in customOptions) {
+            options[prop] = customOptions[prop];
+        }
+    }
+    if(token && !options.hasOwnProperty('headers')) {
+        options.headers = {
+            'X-acpt': token
+        }
+    }
+
+    AJS.$.ajax(options);
+};
+
+ZEPHYR.TEST.EXPORT = {
+
+    getJobProgress: function(jobProgressURL, onRedeem, onFailure) {
+        AJS.$.ajax({
+            url: jobProgressURL + ZEPHYR.TEST.getCacheInterceptor(),
+            type: 'GET',
+            complete: function(jqXHR) {
+                if (onRedeem && jqXHR.status == 200) {
+                    onRedeem(AJS.$.parseJSON(jqXHR.responseText));
+                } else {
+                    onFailure(jqXHR.responseText);
+                }
+            }
+        });
+    },
+
+    showProgressMessage: function(progressBarId, msg, divOptions) {
+        // remove any previous html message div
+        if (AJS.$('#progressMsgDiv'))
+            AJS.$('#progressMsgDiv').remove();
+
+        var $li = AJS.$('#' + progressBarId).parent();
+        var $msgDiv = $('<div>', divOptions);
+        $msgDiv.html(msg);
+        $li.append($msgDiv);
+    },
+
+    displayExportJobProgress: function(label, jobProgressURL, showDialog) {
+        var dialogButtons = [{
+                id: 'zephyr-je-dialog-close',
+                name: Messages('zephyr.close.link.title'),
+                type: 'link'
+            }],
+            dialogContentHTML = showDialog({
+                i18n: Messages.messages
+            }),
+            dialogId = 'export-job-progress-id',
+            dialogRenderHTML = ZEPHYR.Templates.Dialog.renderDialog({
+                'dialogId': dialogId,
+                'dialogSize': 'aui-dialog2-medium',
+                'dialogHeader': label,
+                'dialogContent': dialogContentHTML,
+                'dialogButtons': dialogButtons,
+                isModal: true
+            }),
+            instance = this;
+        AJS.$('body').append(dialogRenderHTML);
+        var exportJobProgressDialog = AJS.dialog2('#' + dialogId); // Create Dialog2 component
+        AJS.$('#zephyr-je-dialog-close').click(function() {
+            exportJobProgressDialog.hide();
+        });
+        exportJobProgressDialog.show(); // Display the dialog
+        // show progress bar
+        exportJobProgressDialog.$el.find('#export-progress-bar').css('display', 'block');
+
+        function onRedeem(result) {
+            var progress = 0.0;
+            if (result && result.progress)
+                progress = result.progress;
+            // update progress bar
+            AJS.progressBars.update('#export-progress-bar', progress);
+            // show time taken
+            instance.showProgressMessage('export-progress-bar', result.timeTaken, {
+                'id': 'progressMsgDiv',
+                'class': 'row'
+            });
+            // if progress is 1.0, clear progressTimeout
+            if (result.progress == 1) {
+                instance._downloadExportedFile(result.summaryMessage);
+                exportJobProgressDialog.hide();
+            } else {
+                setTimeout(function() {
+                    instance.getJobProgress(jobProgressURL, onRedeem, onFailure)
+                }, 2000);
+            }
+        }
+
+        function onFailure(msg) {
+            // hide progress bar
+            AJS.$('#export-progress-bar').css('display', 'none');
+            // show error message
+            instance.showProgressMessage('export-progress-bar', msg, {
+                'id': 'progressMsgDiv',
+                'class': 'description aui-message warning'
+            });
+        }
+        instance.getJobProgress(jobProgressURL, onRedeem, onFailure);
+
+        // Close link
+        exportJobProgressDialog.$el.find('#zephyr-je-dialog-cancel').click(function(ev) {
+            ev.preventDefault();
+            exportJobProgressDialog.hide();
+        });
+    },
+    _downloadExportedFile: function(fileName) {
+        var iFrame = document.createElement('iframe');
+        var token = AJS.$('meta[name=acpt]').attr('content');
+        iFrame.src = ZEPHYR.TEST.ContextPath.getZContextPath() + 'public/rest/api/' + ZEPHYR.API.Version.getVersion() + '/cycle/export/download/' + fileName + '?acpt=' + token;
+        iFrame.style.display = 'none';
+        document.body.appendChild(iFrame);
+    }
+};
+
+
+// to check Cannot read property 'msie' of undefined
+jQuery.browser = {};
+(function() {
+    jQuery.browser.msie = false;
+    jQuery.browser.version = 0;
+    if (navigator.userAgent.match(/MSIE ([0-9]+)\./)) {
+        jQuery.browser.msie = true;
+        jQuery.browser.version = RegExp.$1;
+    }
+})();
+
+ZEPHYR.TEST.showUnautorizedError = function() {
+    if(!ZEPHYR.Templates) {
+        return;
+    }
+    var dialogButtons = [{
+            id: 'unAuthorized-dialog-cancel-button',
+            name: Messages('zephyr.submit.form.cancel'),
+            type: 'link'
+        }],
+        dialogContent = '<div><span id="unAuthorizedErrorMessage"></span><span><a target="_parent" id="reloadPageOnUnauthorized">' + Messages('zephyr.request.status.unauthorized.reload.message') + '</a></span></div>';
+
+    AJS.$('body').append(ZEPHYR.Templates.Dialog.renderDialog({
+        'dialogId': 'unauthorized',
+        'dialogSize': 'aui-dialog2-small',
+        'dialogHeader': Messages('zephyr.request.status.unauthorized'),
+        'dialogContent': dialogContent,
+        'dialogButtons': dialogButtons
+    }));
+
+    var cxt = jQuery('#unAuthorizedErrorMessage');
+
+    cxt.empty();
+    AJS.messages.error(cxt, {
+        title: '',
+        body: Messages('zephyr.request.status.unauthorized.error.message'),
+        closeable: false
+    });
+
+    AJS.dialog2('#unauthorized').show();
+
+    ZEPHYR.Loading.hideLoadingIndicator();
+
+    AJS.$('#unAuthorized-dialog-cancel-button').click(function(e) {
+        e.preventDefault();
+        AJS.dialog2('#unauthorized').hide();
+    });
+
+    AP.getLocation(function(location) {
+        jQuery('#reloadPageOnUnauthorized').attr('href', location);
+    });
+
+    AJS.$('#reloadPageOnUnauthorized').click(function(e) {
+        AP.require(['history'], function(history) {
+            history.go(0); // refreshes the page
+        });
+    });
+};
+
+ZEPHYR.TEST.showErrorDialog = function(error) {
+    var dialogButtons = [{
+            id: 'zephyr-error-dialog-cancel-button',
+            name: Messages('zephyr.submit.form.cancel'),
+            type: 'link'
+        }],
+        dialogContent = '<div><span id="zephyrErrorMessage"></span></div>';
+    var dialogHeader;
+    if (error.errorType === 'ERROR') {
+        dialogHeader = Messages('zephyr.error.title') + ' : ' + error.errorCode;
+    } else if (error.errorType === 'WARN') {
+        dialogHeader = Messages('zephyr.warn.title') + ' : ' + error.errorCode;;
+    }
+    AJS.$('body').append(ZEPHYR.Templates.Dialog.renderDialog({
+        'dialogId': 'zephyrErrorDialog',
+        'dialogSize': 'aui-dialog2-medium',
+        'dialogHeader': dialogHeader,
+        'dialogContent': dialogContent,
+        'dialogButtons': dialogButtons
+    }));
+
+    var cxt = jQuery('#zephyrErrorMessage');
+    cxt.empty();
+    if (error.errorType === 'ERROR') {
+        AJS.messages.error(cxt, {
+            title: '',
+            body: error.clientMessage || '',
+            closeable: false
+        });
+    } else if (error.errorType === 'WARN') {
+        AJS.messages.warn(cxt, {
+            title: '',
+            body: error.clientMessage || '',
+            closeable: false
+        });
+    }
+
+    AJS.dialog2('#zephyrErrorDialog').show();
+    AJS.$('#zephyr-error-dialog-cancel-button').click(function(e) {
+        e.preventDefault();
+        AJS.dialog2('#zephyrErrorDialog').hide();
+    });
+    setTimeout(function() {
+        AJS.dialog2('#zephyrErrorDialog').hide();
+    }, 5000);
+    throw error.errorType + '-' + error.errorCode + ':' + error.clientMessage;
+};
+
+ZEPHYR.TEST.enableHipchat = function(container) {
+
+    AJS.$.ajax({
+        url: ZEPHYR.TEST.ContextPath.getZContextPath() + 'private/rest/api/1.0/hipchat/isIntegrated',
+        type: 'GET',
+        contentType: 'application/json',
+        success: function(response) {
+            if (response.availability) {
+                AJS.$(document).hipchat({
+                    pluginEnabled: response.plugin,
+                    userHasPermission: response.user,
+                    container: container
+                });
+            }
+        }
+    });
+};
+
+ZEPHYR.TEST.disableHipchat = function() {
+    AJS.$(document).hipchat('destroy');
+};
+
+// getter and setter for zfjconnect api version
+ZEPHYR.API.Version = {
+    setVersion: function(version) {
+        this.version = version;
+    },
+    getVersion: function() {
+        return this.version;
+    }
+};
+
+// getter and setter for zfjconnect logged in user
+ZEPHYR.TEST.User = {
+    setLoggedInUser: function(version) {
+        var that = this;
+        AP.request({
+            url: '/rest/api/2/myself',
+            type: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            success: function(response) {
+                that.LoggedInUser = JSON.parse(response);
+            },
+            error: function(error) {
+                that.LoggedInUser = {};
+            }
+        });
+    },
+    getLoggedInUser: function() {
+        return this.LoggedInUser;
+    }
+};
+
+AJS.$(document).ajaxComplete(function(event, xhr, settings) {
+    if (settings.suppressGlobalComplete) {
+        return;
+    }
+    if (xhr.status !== 401 && xhr.responseText && ZEPHYR.TEST.checkValidJSON(xhr.responseText) && JSON.parse(xhr.responseText).errorType) {
+        var response = JSON.parse(xhr.responseText);
+        ZEPHYR.TEST.showErrorDialog(response);
+    }
+    if (xhr.status === 401) {
+        ZEPHYR.TEST.showUnautorizedError();
+    } else {
+        var token = xhr.getResponseHeader('X-acpt');
+        AJS.$('[name="acpt"]').attr('content', token);
+        clearTimeout(ZEPHYR.TEST.tokenExpiryTimerId);
+        ZEPHYR.TEST.initiateTokenExpiryTimer(ZEPHYR.TEST.tokenExpiryTime);
+    }
+});
+
+ZEPHYR.TEST.isoauthCheck = {
+    setOauthFlags: function() {
+        var deferred = jQuery.Deferred();
+        AJS.$.ajax({
+            url: ZEPHYR.TEST.ContextPath.getZContextPath() + 'private/rest/api/1.0/config/isoauth',
+            success: function(response) {
+                deferred.resolve(response);
+            },
+            error: function() {
+                deferred.reject({});
+            }
+        });
+        return deferred.promise();
+    },
+    userRole: function(projectId) {
+        var deferred = jQuery.Deferred();
+        AP.request({
+            url: '/rest/api/3/mypermissions?permissions=ADMINISTER',
+            type: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+             success : function(response) {
+                deferred.resolve(JSON.parse(response));
+            },
+            error: function() {
+                deferred.reject({});
+            }
+        });
+        return deferred.promise();
+    },
+    getOauthFlags: function() {
+       var oauth = this.setOauthFlags();
+       var userRole = this.userRole();
+       jQuery.when(oauth, userRole).then(function(oauth, userRole) {
+           ZEPHYR.TEST.bannerFlagCheck.init(oauth, userRole);
+       });
+    }
+};
+
+ZEPHYR.TEST.bannerFlagCheck = {
+    init: function(oauth, userRole) {
+        var oauthFlag = true;
+        if((oauth || {}).hasOwnProperty('isOauth')) {
+            oauthFlag = oauth.isOauth;
+        }
+
+        if(!oauthFlag) {
+            AJS.$('#zephyr-app-descriptor-dialog').removeClass('hide');
+
+            // Create Dialog2 component
+            var appDescriptorDialog = AJS.dialog2('#zephyr-app-descriptor-dialog');
+
+            AJS.$('#zephyr-app-descriptor').click(function() {
+                appDescriptorDialog.hide();
+            });
+            appDescriptorDialog.show(); // Display the dialog
+
+            if(userRole.permissions.ADMINISTER.havePermission) {
+                AJS.$('.zephyr-js-admin').removeClass('hide');
+            } else {
+                AJS.$('.zephyr-js-non-admin').removeClass('hide');
+            }
+        }
+    }
+};
+
+ZEPHYR.TEST.gadgetStatus = {
+    setStatus: function(status) {
+        this.status = status;
+    },
+    getStatus: function() {
+        return this.status;
+    },
+    setStatusFlag: function(flag) {
+        this.flagValue = flag;
+    },
+    getStatusFlag: function() {
+        return this.flagValue;
+    }
+}
+
+ZEPHYR.TEST.jcmaMigrationStatusData={
+        setTableData:function(){
+        var deferred = jQuery.Deferred();
+        /* var data = [
+            {
+              "transferId": "671d915c-b675-3bf5-8c37-2090dfca2c99",
+              "name": "check",
+              "eventReceived": 1629116389361,
+              "logFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/671d915c-b675-3bf5-8c37-2090dfca2c99.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=fcc587277ae07e4dfa4d3d21f9ac0e42cb1c706de0ae16ce65eb2bd3181ab584",
+              "failedObjectFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/671d915c-b675-3bf5-8c37-2090dfca2c99FailedObjects.csv?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=29c71a510f140046aef2784e7327034234502f4b80d3e9b0220b854dc49cd9f9",
+              "projects": [
+                {
+                  "cloudProjectId": 10041,
+                  "serverProjectId": "10900",
+                  "TotalObjectsReceived": 190,
+                  "TotalObjectsProcessed": 190,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                }
+              ]
+            },
+            {
+              "transferId": "5277d98f-6ddb-390c-9cec-851a16c27584",
+              "name": "benchmigration",
+              "eventReceived": 1629115268783,
+              "logFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/5277d98f-6ddb-390c-9cec-851a16c27584.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=0f57f99dd1b8456ce7cbba225b5744637aa4bc61ed440ad21c51e679c856e5fc",
+              "failedObjectFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/5277d98f-6ddb-390c-9cec-851a16c27584FailedObjects.csv?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=6c2b46e83f18d2eeaf500c3cdb36870cdb3356d9a86518568935a6658620045e",
+              "projects": [
+                {
+                  "cloudProjectId": 10040,
+                  "serverProjectId": "10714",
+                  "TotalObjectsReceived": 23,
+                  "TotalObjectsProcessed": 23,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                }
+              ]
+            },
+            {
+              "transferId": "e24ff716-eb66-37eb-88ab-0d7d8d4fe4d1",
+              "name": "MirationwithExecution",
+              "eventReceived": 1627564978488,
+              "logFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/e24ff716-eb66-37eb-88ab-0d7d8d4fe4d1.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=e014fa77ddd24f805aba79c21925845c78e5a56f5e9b4e14a1e43be13b110905",
+              "failedObjectFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/e24ff716-eb66-37eb-88ab-0d7d8d4fe4d1FailedObjects.csv?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=74f168b01c65d32f3dca8ab24b5b976fc75b0cdccedf3be4f65f3320a79e9a9f",
+              "projects": [
+                {
+                  "cloudProjectId": 10033,
+                  "serverProjectId": "10409",
+                  "TotalObjectsReceived": 41,
+                  "TotalObjectsProcessed": 41,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                }
+              ]
+            },
+            {
+              "transferId": "392be07f-c08e-3de6-b5aa-44729458d057",
+              "name": "MigrateMultiple",
+              "eventReceived": 1627564570581,
+              "logFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/392be07f-c08e-3de6-b5aa-44729458d057.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=3c4ee4016d3cf636948bc6c28560e9aab2a109b81b99a3f35e4061dced5cd9bd",
+              "failedObjectFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/392be07f-c08e-3de6-b5aa-44729458d057FailedObjects.csv?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=56ad772350ab1fb0941dfbff1f378f69965055d9eb3c5af5a446a4e45412c338",
+              "projects": [
+                {
+                  "cloudProjectId": 10032,
+                  "serverProjectId": "10303",
+                  "TotalObjectsReceived": 62,
+                  "TotalObjectsProcessed": 62,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                },
+                {
+                  "cloudProjectId": 10029,
+                  "serverProjectId": "10406",
+                  "TotalObjectsReceived": 33,
+                  "TotalObjectsProcessed": 33,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                },
+                {
+                  "cloudProjectId": 10031,
+                  "serverProjectId": "10413",
+                  "TotalObjectsReceived": 34,
+                  "TotalObjectsProcessed": 34,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                },
+                {
+                  "cloudProjectId": 10030,
+                  "serverProjectId": "10600",
+                  "TotalObjectsReceived": 36,
+                  "TotalObjectsProcessed": 36,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                }
+              ]
+            },
+            {
+              "transferId": "eacb74ec-663b-30e6-bd3f-d86499e4a5c2",
+              "name": "migrate",
+              "eventReceived": 1627563420850,
+              "logFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/eacb74ec-663b-30e6-bd3f-d86499e4a5c2.log?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=c2168d1d653040e7dbfc1325213bd3252e773c65210c2c50da0afa7e0dc9c73d",
+              "failedObjectFilePath": "https://zfj-jcma.s3.us-west-2.amazonaws.com/eacb74ec-663b-30e6-bd3f-d86499e4a5c2FailedObjects.csv?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210818T105422Z&X-Amz-SignedHeaders=host&X-Amz-Expires=1209&X-Amz-Credential=AKIA546V2JDGUIMOCPVK%2F20210818%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Signature=f520c39419dd47adc99b5cc278966d0909e1f9c06517420e475e795f8e29c1f7",
+              "projects": [
+                {
+                  "cloudProjectId": 10028,
+                  "serverProjectId": "10405",
+                  "TotalObjectsReceived": 141,
+                  "TotalObjectsProcessed": 141,
+                  "TotalObjectsFailed": 0,
+                  "status": "SUCCESS"
+                }
+              ]
+            }
+          ];
+        deferred.resolve(data); */
+        AJS.$.ajax({
+            url: ZEPHYR.TEST.ContextPath.getZContextPath() + 'private/rest/api/' + ZEPHYR.API.Version.getVersion() + '/jcma/migration/status?'+ZEPHYR.TEST.getCacheInterceptor(),
+            type: "GET",
+            success: function (data) {
+                deferred.resolve(data);
+            },
+            error: function (error) {
+               console.log(error);
+               deferred.reject([]);
+            }
+        });
+        return deferred.promise();
+    },
+    fetchAllProjectsData:function(){
+        var deferred = jQuery.Deferred();
+        /* var data = [
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10030",
+              "id": "10030",
+              "key": "SAM",
+              "name": "00-Sample-Project-Docs",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10030&avatarId=10414",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10030&avatarId=10414",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10030&avatarId=10414",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10030&avatarId=10414"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10002",
+              "id": "10002",
+              "key": "XSHE",
+              "name": "714test",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10002&avatarId=10413",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10002&avatarId=10413",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10002&avatarId=10413",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10002&avatarId=10413"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10027",
+              "id": "10027",
+              "key": "HOT730",
+              "name": "730hotfix",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10027&avatarId=10409",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10027&avatarId=10409",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10027&avatarId=10409",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10027&avatarId=10409"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10022",
+              "id": "10022",
+              "key": "VHMP",
+              "name": "733final",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10022&avatarId=10425",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10022&avatarId=10425",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10022&avatarId=10425",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10022&avatarId=10425"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10029",
+              "id": "10029",
+              "key": "AD",
+              "name": "adhoctes",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10029&avatarId=10411",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10029&avatarId=10411",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10029&avatarId=10411",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10029&avatarId=10411"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10031",
+              "id": "10031",
+              "key": "AB",
+              "name": "agile board",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10031&avatarId=10423",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10031&avatarId=10423",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10031&avatarId=10423",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10031&avatarId=10423"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10000",
+              "id": "10000",
+              "key": "API",
+              "name": "API",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10000&avatarId=10407",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10000&avatarId=10407",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10000&avatarId=10407",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10000&avatarId=10407"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10032",
+              "id": "10032",
+              "key": "ARUN",
+              "name": "arun",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10032&avatarId=10425",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10032&avatarId=10425",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10032&avatarId=10425",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10032&avatarId=10425"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10025",
+              "id": "10025",
+              "key": "AA",
+              "name": "ATOM Automation",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10025&avatarId=10419",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10025&avatarId=10419",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10025&avatarId=10419",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10025&avatarId=10419"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10024",
+              "id": "10024",
+              "key": "ATEG",
+              "name": "AtomTestingCloud",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10024&avatarId=10407",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10024&avatarId=10407",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10024&avatarId=10407",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10024&avatarId=10407"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10040",
+              "id": "10040",
+              "key": "AUT",
+              "name": "Automation",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10040&avatarId=10416",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10040&avatarId=10416",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10040&avatarId=10416",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10040&avatarId=10416"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10026",
+              "id": "10026",
+              "key": "ATG",
+              "name": "Automation Testing",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10026&avatarId=10421",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10026&avatarId=10421",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10026&avatarId=10421",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10026&avatarId=10421"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10012",
+              "id": "10012",
+              "key": "CHEC",
+              "name": "Check",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10012&avatarId=10425",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10012&avatarId=10425",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10012&avatarId=10425",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10012&avatarId=10425"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10004",
+              "id": "10004",
+              "key": "CI",
+              "name": "Check IssueType",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10004&avatarId=10424",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10004&avatarId=10424",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10004&avatarId=10424",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10004&avatarId=10424"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10034",
+              "id": "10034",
+              "key": "CSK",
+              "name": "chennai super kings",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10034&avatarId=10422",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10034&avatarId=10422",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10034&avatarId=10422",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10034&avatarId=10422"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10033",
+              "id": "10033",
+              "key": "CYC",
+              "name": "CycleSummaryPage",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10033&avatarId=10409",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10033&avatarId=10409",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10033&avatarId=10409",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10033&avatarId=10409"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10035",
+              "id": "10035",
+              "key": "FIR",
+              "name": "first project",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10035&avatarId=10423",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10035&avatarId=10423",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10035&avatarId=10423",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10035&avatarId=10423"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10036",
+              "id": "10036",
+              "key": "FTJZW",
+              "name": "five jcma zephyr squad",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10036&avatarId=10418",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10036&avatarId=10418",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10036&avatarId=10418",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10036&avatarId=10418"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10041",
+              "id": "10041",
+              "key": "MIG",
+              "name": "Migrationhf3",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10041&avatarId=10421",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10041&avatarId=10421",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10041&avatarId=10421",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10041&avatarId=10421"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10018",
+              "id": "10018",
+              "key": "NW",
+              "name": "new11",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10018&avatarId=10403",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10018&avatarId=10403",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10018&avatarId=10403",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10018&avatarId=10403"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10003",
+              "id": "10003",
+              "key": "NEW",
+              "name": "new714",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10003&avatarId=10401",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10003&avatarId=10401",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10003&avatarId=10401",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10003&avatarId=10401"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10023",
+              "id": "10023",
+              "key": "NP",
+              "name": "new_project1",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10023&avatarId=10403",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10023&avatarId=10403",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10023&avatarId=10403",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10023&avatarId=10403"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10038",
+              "id": "10038",
+              "key": "NEX",
+              "name": "Next801",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10038&avatarId=10416",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10038&avatarId=10416",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10038&avatarId=10416",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10038&avatarId=10416"
+              },
+              "projectTypeKey": "software",
+              "simplified": true,
+              "style": "next-gen",
+              "isPrivate": false,
+              "properties": {},
+              "entityId": "5e1143b7-23d5-4025-a2aa-2d42abe1153f",
+              "uuid": "5e1143b7-23d5-4025-a2aa-2d42abe1153f"
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10005",
+              "id": "10005",
+              "key": "PWA",
+              "name": "Project Without Addon",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10005&avatarId=10414",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10005&avatarId=10414",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10005&avatarId=10414",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10005&avatarId=10414"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10008",
+              "id": "10008",
+              "key": "PRJ",
+              "name": "ProjectKey",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10008&avatarId=10422",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10008&avatarId=10422",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10008&avatarId=10422",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10008&avatarId=10422"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10007",
+              "id": "10007",
+              "key": "PROJ",
+              "name": "ProjectWithProjectKey",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10007&avatarId=10407",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10007&avatarId=10407",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10007&avatarId=10407",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10007&avatarId=10407"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10009",
+              "id": "10009",
+              "key": "SHRU",
+              "name": "shru",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10009&avatarId=10414",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10009&avatarId=10414",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10009&avatarId=10414",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10009&avatarId=10414"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10020",
+              "id": "10020",
+              "key": "S7",
+              "name": "Shru 731",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10020&avatarId=10413",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10020&avatarId=10413",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10020&avatarId=10413",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10020&avatarId=10413"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10006",
+              "id": "10006",
+              "key": "SC",
+              "name": "Shru CheckAddon",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10006&avatarId=10414",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10006&avatarId=10414",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10006&avatarId=10414",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10006&avatarId=10414"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10013",
+              "id": "10013",
+              "key": "SHRU7",
+              "name": "Shru715",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10013&avatarId=10416",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10013&avatarId=10416",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10013&avatarId=10416",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10013&avatarId=10416"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10015",
+              "id": "10015",
+              "key": "SHR7",
+              "name": "Shru715hf1",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10015&avatarId=10422",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10015&avatarId=10422",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10015&avatarId=10422",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10015&avatarId=10422"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10016",
+              "id": "10016",
+              "key": "SHR717",
+              "name": "Shru717",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10016&avatarId=10421",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10016&avatarId=10421",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10016&avatarId=10421",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10016&avatarId=10421"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10017",
+              "id": "10017",
+              "key": "SHR717NXTG",
+              "name": "Shru717NextGen",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10017&avatarId=10412",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10017&avatarId=10412",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10017&avatarId=10412",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10017&avatarId=10412"
+              },
+              "projectTypeKey": "software",
+              "simplified": true,
+              "style": "next-gen",
+              "isPrivate": false,
+              "properties": {},
+              "entityId": "f3a9298d-a82f-4d2d-8ab3-f945ac832bad",
+              "uuid": "f3a9298d-a82f-4d2d-8ab3-f945ac832bad"
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10019",
+              "id": "10019",
+              "key": "SHR730",
+              "name": "Shru730",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10019&avatarId=10416",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10019&avatarId=10416",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10019&avatarId=10416",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10019&avatarId=10416"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10021",
+              "id": "10021",
+              "key": "SHR733",
+              "name": "shru733",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10021&avatarId=10422",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10021&avatarId=10422",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10021&avatarId=10422",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10021&avatarId=10422"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10039",
+              "id": "10039",
+              "key": "SHR8",
+              "name": "shru800",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10039&avatarId=10423",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10039&avatarId=10423",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10039&avatarId=10423",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10039&avatarId=10423"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10037",
+              "id": "10037",
+              "key": "SHRU8",
+              "name": "shru801",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10037&avatarId=10404",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10037&avatarId=10404",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10037&avatarId=10404",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10037&avatarId=10404"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10028",
+              "id": "10028",
+              "key": "SAT",
+              "name": "ShruAtom Testing",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10028&avatarId=10422",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10028&avatarId=10422",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10028&avatarId=10422",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10028&avatarId=10422"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10011",
+              "id": "10011",
+              "key": "SHRUP",
+              "name": "ShruPerformance",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10011&avatarId=10416",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10011&avatarId=10416",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10011&avatarId=10416",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10011&avatarId=10416"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10014",
+              "id": "10014",
+              "key": "SHRUT",
+              "name": "shruTestFix",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10014&avatarId=10406",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10014&avatarId=10406",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10014&avatarId=10406",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10014&avatarId=10406"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10001",
+              "id": "10001",
+              "key": "TEST",
+              "name": "test",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10001&avatarId=10407",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10001&avatarId=10407",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10001&avatarId=10407",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10001&avatarId=10407"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            },
+            {
+              "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+              "self": "https://qabench-712-vanilla.atlassian.net/rest/api/2/project/10010",
+              "id": "10010",
+              "key": "VD714",
+              "name": "VD714",
+              "avatarUrls": {
+                "48x48": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?pid=10010&avatarId=10408",
+                "24x24": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=small&s=small&pid=10010&avatarId=10408",
+                "16x16": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=xsmall&s=xsmall&pid=10010&avatarId=10408",
+                "32x32": "https://qabench-712-vanilla.atlassian.net/secure/projectavatar?size=medium&s=medium&pid=10010&avatarId=10408"
+              },
+              "projectTypeKey": "software",
+              "simplified": false,
+              "style": "classic",
+              "isPrivate": false,
+              "properties": {}
+            }
+          ];
+        deferred.resolve(data); */
+        AP.require('request', function(request){
+	        request({
+	            url: '/rest/api/2/project',
+	            success: function(projects) {
+                    deferred.resolve(JSON.parse(projects));
+                },
+                error:function(error){
+                    console.log(error);
+                }
+	        });
+        });
+        return deferred.promise();
+    },
+    getTableData: function(resetValue) {
+        if(resetValue){
+            ZEPHYR.Loading.showLoadingIndicator();
+        }
+        var tableData = this.setTableData();
+        var projects = this.fetchAllProjectsData();
+        jQuery.when(tableData, projects).done(function(tableData, projects) {
+            if(resetValue){
+                AJS.$('#migration-table-report').children().remove();
+            }
+           ZEPHYR.ADMIN.CONFIG.showTableDatajcma(dummyData, projects, resetValue);
+       });
+     },
+     checkForStatus:function(stausArray,valueCheck){
+       return (stausArray || []).find(function(item){
+                return item.status === valueCheck;
+       });
+     }
+
+}

@@ -1,0 +1,116 @@
+/**
+ * @namespace ZEPHYR.REPORTS.TOPDEFECTS
+ */
+var ZEPHYR = ZEPHYR || {};
+var defects='';
+ZEPHYR.REPORTS = ZEPHYR.REPORTS || {};
+ZEPHYR.REPORTS.TOPDEFECTS = function () {};
+ZEPHYR.REPORTS.TOPDEFECTS.prototype = AJS.$.extend(ZEPHYR.REPORTS.TOPDEFECTS.prototype, {
+    data: {},
+    resize: function () {
+        if(Object.keys(this.data).length) {
+            this.drawChart(this.data);
+        }
+    },
+    getDefects: function (projectId, versionId, defectsCount, pickStatus, callback) {
+		if(defects !== defectsCount) {
+			analytics.track('Top defects report options - Reports', {
+				defectsCount: defectsCount,
+				pickStatus: pickStatus
+			});
+			defects = defectsCount;
+		}
+        var that = this,
+            queryParams = {
+                'projectId': projectId,
+                'versionId': versionId,
+                'issueStatuses': pickStatus,
+                'howMany': defectsCount
+			},
+			
+        	ajaxOptions =  {
+	            url: ZEPHYR.TEST.ContextPath.getZContextPath() + 'public/rest/api/' + ZEPHYR.API.Version.getVersion() + '/defectcount',
+	            data: queryParams,
+	            type: 'GET',
+	            contentType: 'application/json',
+	            success: function (data) {
+	            	// var data = {'data':[{'defectId':10400,'defectKey':'AZ-3','defectSummary':'adfdf','defectStatus':'Open','testCount':1,'associatedTestIds':['10200']}]};
+	                if (data) {
+	                    if(Object.keys(data).length === 0) {
+	                        AJS.$('#' + reqParams.chartDivId).html('No data found for chart ' + reqParams.title).css('color', '#1F77B4');
+	                    } else {
+	                    	if(ZEPHYR && ZEPHYR.GADGETS && ZEPHYR.GADGETS.OPTIONS && ZEPHYR.GADGETS.OPTIONS.TOPDEFECTS) {
+	                    		ZEPHYR.GADGETS.OPTIONS.TOPDEFECTS['data'] = data;
+	                    	}
+	                        that.drawChart(data, defectsCount);
+                            that.data = data;
+	                    }
+	                }
+	                if(callback) {
+                    	callback('success', true);
+                    }
+	                ZEPHYR.Loading.hideLoadingIndicator();
+	            },
+	            error: function (response) {
+	                AJS.$('#zephyr-test-report').children().not('#back').remove();
+	                if(callback) {
+                    	callback('error', false);
+                    }
+	                ZEPHYR.Loading.hideLoadingIndicator();
+	            }
+        	};
+        ZEPHYR.Loading.showLoadingIndicator();
+        AJS.$.ajax(ajaxOptions);
+    },
+    drawChart: function (data, defectsCount) {
+
+    	var $zephyrTestReport = AJS.$('#zephyr-test-report');
+
+    	AJS.$('#zephyr-test-report').children().not('#back').remove();
+
+		var tableTop = '<table class="aui tablesorter" id="defectTable">';
+		tableTop += '<thead> <tr>' +
+				'<th data-sorttype="DESC" data-sortkey="key" class="thStyle">' + Messages('project.cycle.schedule.table.column.defect') + ' ' + Messages("project.cycle.schedule.table.column.id") + '<span></span></th>' +
+				'<th data-sorttype="DESC" data-sortkey="summary" class="thStyle">' + Messages('project.cycle.schedule.table.column.summary') + '<span></span></th>' +
+				'<th data-sorttype="DESC" data-sortkey="status" class="thStyle">' + Messages('project.cycle.schedule.table.column.status') + '<span></span></th>' +
+				'<th data-sorttype="DESC" data-sortkey="testCount" class="thStyle">Tests Affected<span></span></th>' +
+				'</tr></thead>';
+
+		if(data && data.data) {
+			var i, test, seriesTemp = {};
+			tableTop += '<tbody>';
+			for (i = 0; i < data.data.length; i++) {
+				tableTop += '<tr>';
+				var defectIdsHtml,
+					defectData = data.data;
+
+				if(defectData[i].resolution) {
+					defectIdsHtml = '<a class="lineThrough" target="_parent" href="'+ ZEPHYR.TEST.BaseURL.getBaseURL() + ZEPHYR.TEST.ContextPath.getContextPath() + '/browse/' + defectData[i].key + '">' + defectData[i].key + '</a>';
+				} else {
+					defectIdsHtml = '<a target="_parent" href="' + ZEPHYR.TEST.BaseURL.getBaseURL() + ZEPHYR.TEST.ContextPath.getContextPath() + '/browse/' + defectData[i].key + '">' + defectData[i].key + '</a>';
+				}
+
+				var baseNavHtml = '/secure/IssueNavigator.jspa?reset=true&jqlQuery=';
+				var associatedTestIdCount = '';
+                for(test in defectData[i].associatedTestIds) {
+                    associatedTestIdCount += 'issue=' + defectData[i].associatedTestIds[test];
+					 if(test < defectData[i].associatedTestIds.length - 1) {
+						associatedTestIdCount += ' OR ';
+					}
+				}
+
+				baseNavHtml += escape(associatedTestIdCount);
+				var associatedTestCountHtml = '<a target="_parent" href=' + ZEPHYR.TEST.BaseURL.getBaseURL() + ZEPHYR.TEST.ContextPath.getContextPath() + baseNavHtml + '>' + defectData[i].testCount + '</a>';
+				tableTop += '<td class="tdOrdering">' + defectIdsHtml + '</td>';
+				tableTop += '<td class="tdOrdering">' + AJS.escapeHtml(defectData[i].summary) + '</td>';
+				tableTop += '<td class="tdOrdering">' + AJS.escapeHtml(defectData[i].status) + '</td>';
+				tableTop += '<td class="tdOrdering">' + associatedTestCountHtml + '</td>';
+
+				tableTop += '</tr>';
+			}
+			tableTop += '</tbody>';
+		}
+		tableTop += '</table>';
+		AJS.$(tableTop).appendTo($zephyrTestReport);
+    }
+});

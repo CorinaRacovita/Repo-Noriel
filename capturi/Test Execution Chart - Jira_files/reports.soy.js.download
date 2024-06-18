@@ -1,0 +1,60 @@
+// This file was automatically generated from reports.soy.
+// Please don't edit this file by hand.
+
+if (typeof ZEPHYR == 'undefined') { var ZEPHYR = {}; }
+if (typeof ZEPHYR.Templates == 'undefined') { ZEPHYR.Templates = {}; }
+if (typeof ZEPHYR.Templates.Reports == 'undefined') { ZEPHYR.Templates.Reports = {}; }
+
+
+ZEPHYR.Templates.Reports.renderVersions = function(opt_data, opt_ignored) {
+  var output = '\t<select id="versions-dd" name="versions-dd">';
+  if (opt_data.versions.unreleasedVersions && opt_data.versions.unreleasedVersions.length != 0) {
+    output += '<optgroup label="' + soy.$$escapeHtml(opt_data.i18n['cycle.versions.unreleased.label']) + '">';
+    var unreleasedVersionList9 = opt_data.versions.unreleasedVersions;
+    var unreleasedVersionListLen9 = unreleasedVersionList9.length;
+    for (var unreleasedVersionIndex9 = 0; unreleasedVersionIndex9 < unreleasedVersionListLen9; unreleasedVersionIndex9++) {
+      var unreleasedVersionData9 = unreleasedVersionList9[unreleasedVersionIndex9];
+      output += '<option title="' + soy.$$escapeHtml(unreleasedVersionData9.name) + '" ' + ((opt_data.selectedVersionId == unreleasedVersionData9.id) ? 'selected="selected"' : '') + ' value="' + soy.$$escapeHtml(unreleasedVersionData9.id) + '">' + soy.$$escapeHtml(unreleasedVersionData9.name) + '</option>';
+    }
+    output += '</optgroup>';
+  }
+  if (opt_data.versions.releasedVersions && opt_data.versions.releasedVersions.length != 0) {
+    output += '<optgroup label="' + soy.$$escapeHtml(opt_data.i18n['cycle.versions.released.label']) + '">';
+    var releasedVersionList28 = opt_data.versions.releasedVersions;
+    var releasedVersionListLen28 = releasedVersionList28.length;
+    for (var releasedVersionIndex28 = 0; releasedVersionIndex28 < releasedVersionListLen28; releasedVersionIndex28++) {
+      var releasedVersionData28 = releasedVersionList28[releasedVersionIndex28];
+      output += '<option title="' + soy.$$escapeHtml(releasedVersionData28.name) + '" ' + ((opt_data.selectedVersionId == releasedVersionData28.id) ? 'selected="selected"' : '') + ' value="' + soy.$$escapeHtml(releasedVersionData28.id) + '">' + soy.$$escapeHtml(releasedVersionData28.name) + '</option>';
+    }
+    output += '</optgroup>';
+  }
+  output += '</select>';
+  return output;
+};
+
+
+ZEPHYR.Templates.Reports.renderCycles = function(opt_data, opt_ignored) {
+  var output = '\t<select id="cycles-dd" name="cycles-dd">';
+  var cycleList45 = opt_data.cycles;
+  var cycleListLen45 = cycleList45.length;
+  for (var cycleIndex45 = 0; cycleIndex45 < cycleListLen45; cycleIndex45++) {
+    var cycleData45 = cycleList45[cycleIndex45];
+    output += '<option title="' + soy.$$escapeHtml(cycleData45.name) + '" value="' + soy.$$escapeHtml(cycleData45.id) + '">' + soy.$$escapeHtml(cycleData45.name) + '</option>';
+  }
+  output += '</select>';
+  return output;
+};
+
+
+ZEPHYR.Templates.Reports.renderFolders = function(opt_data, opt_ignored) {
+  var output = '<select id="folders-dd" name="folders-dd">';
+  var folderList4 = opt_data.folders;
+  var folderListLen4 = folderList4.length;
+  for (var folderIndex4 = 0; folderIndex4 < folderListLen4; folderIndex4++) {
+    var folderData4 = folderList4[folderIndex4];
+    output += '<option title="' + soy.$$escapeHtml(folderData4.name) + '" value="' + soy.$$escapeHtml(folderData4.id) + '">' + soy.$$escapeHtml(folderData4.name) + '</option>';
+  }
+  output += '</select>';
+  return output;
+};
+
